@@ -47,7 +47,7 @@ pub trait Ternary {
         Ok(())
     }
 
-    fn write_bytes<W: WriteBytesExt>(&self, mut writer: &mut W) -> Result<()> {
+    fn write_bytes<W: WriteBytesExt>(&self, writer: &mut W) -> Result<()> {
         for i in 0..self.tryte_len() {
             let tryte = self.get_tryte(i);
             tryte.write_bytes(writer)?;
@@ -56,7 +56,7 @@ pub trait Ternary {
         Ok(())
     }
 
-    fn into_i64(&self) -> i64 {
+    fn as_i64(&self) -> i64 {
         let mut n = 0_i64;
 
         for i in (0..self.trit_len()).rev() {
@@ -164,25 +164,26 @@ pub fn compare<T: Ternary + ?Sized>(lhs: &T, rhs: &T) -> Trit {
 }
 
 pub fn negate<T: Ternary + ?Sized>(dest: &mut T, src: &T) {
-    zip_trytes(dest, src, Tryte::neg)
+    map_trytes(dest, src, Tryte::neg);
 }
 
 pub fn and<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
-    zip2_trits(dest, lhs, rhs, Trit::bitand)
+    zip_trits(dest, lhs, rhs, Trit::bitand);
 }
 
 pub fn or<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
-    zip2_trits(dest, lhs, rhs, Trit::bitor)
+    zip_trits(dest, lhs, rhs, Trit::bitor);
 }
 
 pub fn tcmp<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
-    zip2_trits(dest, lhs, rhs, Trit::tcmp)
+    zip_trits(dest, lhs, rhs, Trit::tcmp);
 }
 
 pub fn tmul<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
-    zip2_trits(dest, lhs, rhs, Trit::mul)
+    zip_trits(dest, lhs, rhs, Trit::mul);
 }
 
+#[allow(dead_code)]
 fn read_trits<T: Ternary + ?Sized>(dest: &mut T, trits: &[Trit]) -> Result<()> {
     if trits.len() != dest.trit_len() {
         return Err(Error::InvalidLength(dest.trit_len(), trits.len()));
@@ -248,7 +249,8 @@ pub fn shift<T: Ternary + ?Sized>(dest: &mut T, src: &T, offset: isize) {
     }
 }
 
-fn zip_trits<T, F>(dest: &mut T, lhs: &T, f: F)
+#[allow(dead_code)]
+fn map_trits<T, F>(dest: &mut T, lhs: &T, f: F)
 where
     T: Ternary + ?Sized,
     F: Fn(Trit) -> Trit,
@@ -259,7 +261,7 @@ where
     }
 }
 
-fn zip_trytes<T, F>(dest: &mut T, lhs: &T, f: F)
+fn map_trytes<T, F>(dest: &mut T, lhs: &T, f: F)
 where
     T: Ternary + ?Sized,
     F: Fn(Tryte) -> Tryte,
@@ -270,7 +272,7 @@ where
     }
 }
 
-fn zip2_trits<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
+fn zip_trits<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
 where
     T: Ternary + ?Sized,
     F: Fn(Trit, Trit) -> Trit,
@@ -283,7 +285,8 @@ where
     }
 }
 
-fn zip2_trytes<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
+#[allow(dead_code)]
+fn zip_trytes<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
 where
     T: Ternary + ?Sized,
     F: Fn(Tryte, Tryte) -> Tryte,
@@ -296,6 +299,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn mutate_trits<T, F>(lhs: &mut T, f: F)
 where
     T: Ternary + ?Sized,
@@ -307,6 +311,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn mutate_trytes<T, F>(lhs: &mut T, f: F)
 where
     T: Ternary + ?Sized,
@@ -318,6 +323,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn mutate2_trits<T, F>(lhs: &mut T, rhs: &T, f: F)
 where
     T: Ternary + ?Sized,
@@ -331,6 +337,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn mutate2_trytes<T, F>(lhs: &mut T, rhs: &T, f: F)
 where
     T: Ternary + ?Sized,
@@ -374,7 +381,7 @@ impl Ternary for [Tryte] {
     }
 }
 
-fn indices(i: usize) -> (usize, usize) {
+const fn indices(i: usize) -> (usize, usize) {
     let tryte_index = i / tryte::TRIT_LEN;
     let trit_index = i % tryte::TRIT_LEN;
     (tryte_index, trit_index)
@@ -395,11 +402,11 @@ mod tests {
 
     #[test]
     fn ternary_into_i64() {
-        assert_eq!(WORD_MIN, TRYTE4_MIN.into_i64());
-        assert_eq!(-1_i64, TRYTE4_NEG1.into_i64());
-        assert_eq!(0_i64, TRYTE4_0.into_i64());
-        assert_eq!(1_i64, TRYTE4_1.into_i64());
-        assert_eq!(WORD_MAX, TRYTE4_MAX.into_i64());
+        assert_eq!(WORD_MIN, TRYTE4_MIN.as_i64());
+        assert_eq!(-1_i64, TRYTE4_NEG1.as_i64());
+        assert_eq!(0_i64, TRYTE4_0.as_i64());
+        assert_eq!(1_i64, TRYTE4_1.as_i64());
+        assert_eq!(WORD_MAX, TRYTE4_MAX.as_i64());
     }
 
     #[test]
@@ -1025,15 +1032,6 @@ mod tests {
         let mut vec = Vec::new();
         vec.extend_from_slice(slice);
         vec
-    }
-
-    fn with_cloned_trytes<F>(trytes: &[Tryte], mut f: F) -> Vec<Tryte>
-    where
-        F: FnMut(&mut [Tryte]),
-    {
-        let mut trytes = clone_slice(trytes);
-        f(&mut trytes[..]);
-        trytes
     }
 
     fn with_cloned_trytes2<F>(trytes1: &[Tryte], trytes2: &[Tryte], mut f: F) -> Vec<Tryte>

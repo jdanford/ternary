@@ -1,9 +1,12 @@
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(clippy::from_over_into)
+)]
+
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 use std::ops;
-
-use phf::phf_map;
 
 use super::error::{Error, Result};
 use super::tables::{
@@ -30,7 +33,7 @@ pub const POS: Trit = Trit(BIN_POS);
 pub const NEG: Trit = Trit(BIN_NEG);
 
 impl Trit {
-    pub fn from_trit4(trit4: u8) -> Result<Self> {
+    pub const fn from_trit4(trit4: u8) -> Result<Self> {
         let trit_bits = trit4 as u16 & BITMASK;
         if trit_bits == BIN_INVALID {
             return Err(Error::InvalidBitPattern(trit_bits as u64));
@@ -39,36 +42,36 @@ impl Trit {
         Ok(Trit(trit_bits))
     }
 
-    fn negation_bits(self) -> u16 {
+    const fn negation_bits(self) -> u16 {
         self.0 << 1 & BITMASK
     }
 
-    pub fn tcmp(self, rhs: Self) -> Self {
+    pub const fn tcmp(self, rhs: Self) -> Self {
         let i = trit2_index(self, rhs);
         let bits = TRIT2_TO_CMP[i];
         Trit(bits)
     }
 
-    pub fn add_with_carry(self, rhs: Self, carry_in: Self) -> (Self, Self) {
+    pub const fn add_with_carry(self, rhs: Self, carry_in: Self) -> (Self, Self) {
         let i = trit3_index(self, rhs, carry_in);
         let (sum, carry) = TRIT3_TO_SUM_AND_CARRY[i];
         (Trit(sum), Trit(carry))
     }
 
-    pub fn into_index(self) -> usize {
+    pub const fn into_index(self) -> usize {
         self.0 as usize
     }
 }
 
-fn trit2_index(a: Trit, b: Trit) -> usize {
+const fn trit2_index(a: Trit, b: Trit) -> usize {
     a.into_index() << 2 | b.into_index()
 }
 
-fn trit3_index(a: Trit, b: Trit, c: Trit) -> usize {
+const fn trit3_index(a: Trit, b: Trit, c: Trit) -> usize {
     a.into_index() << 4 | b.into_index() << 2 | c.into_index()
 }
 
-static TRIT_TO_I16: [i16; 4] = [0, 1, 0, -1];
+const TRIT_TO_I16: [i16; 4] = [0, 1, 0, -1];
 
 impl Into<i16> for Trit {
     fn into(self) -> i16 {
@@ -76,7 +79,7 @@ impl Into<i16> for Trit {
     }
 }
 
-static U16_TO_TRIT: [u16; 3] = [BIN_NEG, BIN_ZERO, BIN_POS];
+const U16_TO_TRIT: [u16; 3] = [BIN_NEG, BIN_ZERO, BIN_POS];
 
 impl TryFrom<i16> for Trit {
     type Error = Error;
@@ -92,7 +95,7 @@ impl TryFrom<i16> for Trit {
     }
 }
 
-static TRIT_TO_CHAR: [char; 4] = [CHAR_ZERO, CHAR_POS, CHAR_INVALID, CHAR_NEG];
+const TRIT_TO_CHAR: [char; 4] = [CHAR_ZERO, CHAR_POS, CHAR_INVALID, CHAR_NEG];
 
 impl Into<char> for Trit {
     fn into(self) -> char {
@@ -100,25 +103,20 @@ impl Into<char> for Trit {
     }
 }
 
-static CHAR_TO_TRIT: phf::Map<char, u16> = phf_map! {
-    'T' => BIN_NEG,
-    '0' => BIN_ZERO,
-    '1' => BIN_POS,
-};
-
 impl TryFrom<char> for Trit {
     type Error = Error;
 
     fn try_from(c: char) -> Result<Self> {
-        if let Some(&bits) = CHAR_TO_TRIT.get(&c) {
-            Ok(Trit(bits))
-        } else {
-            Err(Error::InvalidCharacter(c))
+        match c {
+            'T' => Ok(Trit(BIN_NEG)),
+            '0' => Ok(Trit(BIN_ZERO)),
+            '1' => Ok(Trit(BIN_POS)),
+            _ => Err(Error::InvalidCharacter(c))
         }
     }
 }
 
-static TRIT_TO_ORDERING: [Ordering; 4] = [
+const TRIT_TO_ORDERING: [Ordering; 4] = [
     Ordering::Equal,
     Ordering::Greater,
     Ordering::Equal,
@@ -256,7 +254,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::eq_op)]
     fn trit_and() {
         assert_eq!(ZERO, ZERO & ZERO);
         assert_eq!(ZERO, ZERO & POS);
@@ -270,7 +267,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::eq_op)]
     fn trit_or() {
         assert_eq!(ZERO, ZERO | ZERO);
         assert_eq!(POS, ZERO | POS);
@@ -328,7 +324,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::eq_op)]
     fn trit_cmp() {
         assert!(ZERO == ZERO);
         assert!(ZERO < POS);

@@ -7,13 +7,14 @@
         clippy::cast_possible_wrap,
         clippy::cast_sign_loss,
         clippy::missing_docs_in_private_items,
-        clippy::non_ascii_literal
+        clippy::missing_errors_doc,
+        clippy::must_use_candidate,
+        clippy::non_ascii_literal,
+        clippy::return_self_not_must_use,
     )
 )]
 
 extern crate byteorder;
-extern crate lazy_static;
-extern crate phf;
 
 mod core;
 pub mod constants;

@@ -14,6 +14,7 @@ pub enum Error {
     IoError(io::Error),
 }
 
+// can't be derived because `==` is not supported on `io::Error`
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

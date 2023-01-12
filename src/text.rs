@@ -24,16 +24,16 @@ const DOUBLE_MAX: usize = DOUBLE_MIN + DOUBLE_RANGE - 1;
 const TRIPLE_MIN: usize = DOUBLE_MAX + 1;
 const TRIPLE_MAX: usize = TRIPLE_MIN + TRIPLE_RANGE - 1;
 
-static SINGLE_START_BITMASK: u16 = 0b00_11_11_11_11_11;
+// const SINGLE_START_BITMASK: u16 = 0b00_11_11_11_11_11;
 
-static DOUBLE_START_BITMASK: u16 = 0b00_00_11_11_11_11;
-static DOUBLE_START_PATTERN: u16 = 0b01_00_00_00_00_00;
+const DOUBLE_START_BITMASK: u16 = 0b00_00_11_11_11_11;
+const DOUBLE_START_PATTERN: u16 = 0b01_00_00_00_00_00;
 
-static TRIPLE_START_BITMASK: u16 = 0b00_00_00_11_11_11;
-static TRIPLE_START_PATTERN: u16 = 0b01_01_00_00_00_00;
+const TRIPLE_START_BITMASK: u16 = 0b00_00_00_11_11_11;
+const TRIPLE_START_PATTERN: u16 = 0b01_01_00_00_00_00;
 
-static CONTINUATION_BITMASK: u16 = 0b00_11_11_11_11_11;
-static CONTINUATION_PATTERN: u16 = 0b11_00_00_00_00_00;
+const CONTINUATION_BITMASK: u16 = 0b00_11_11_11_11_11;
+const CONTINUATION_PATTERN: u16 = 0b11_00_00_00_00_00;
 
 pub fn encode_str(dest: &mut [Tryte], s: &str) -> Result<usize> {
     let offset = WORD_LEN;
@@ -41,7 +41,7 @@ pub fn encode_str(dest: &mut [Tryte], s: &str) -> Result<usize> {
     for c in s.chars() {
         let start = i + offset;
         let end = start + 3;
-        let mut slice = &mut dest[start..end];
+        let slice = &mut dest[start..end];
         i += encode_char(slice, c)?;
     }
 
@@ -51,7 +51,7 @@ pub fn encode_str(dest: &mut [Tryte], s: &str) -> Result<usize> {
 
 pub fn decode_str(src: &[Tryte]) -> Result<(String, usize)> {
     let offset = WORD_LEN;
-    let len = src[0..offset].into_i64() as usize;
+    let len = src[0..offset].as_i64() as usize;
     let mut s = String::new();
 
     let mut i = 0;
@@ -180,7 +180,7 @@ pub fn decode_char(src: &[Tryte]) -> Result<(char, usize)> {
         _ => Err(invalid_encoding_from_trytes(&src[0..1])),
     }?;
 
-    let shifted_codepoint = dest.into_i64() as i32;
+    let shifted_codepoint = dest.as_i64() as i32;
     let codepoint = unshift_codepoint(shifted_codepoint, codepoint_offset);
     let c = char::from_u32(codepoint).ok_or_else(|| invalid_encoding_from_trytes(src))?;
 
@@ -194,11 +194,11 @@ pub fn invalid_encoding_from_trytes(src: &[Tryte]) -> Error {
     Error::InvalidEncoding(s)
 }
 
-fn shift_codepoint(codepoint: u32, offset: isize) -> i32 {
+const fn shift_codepoint(codepoint: u32, offset: isize) -> i32 {
     (codepoint as i32).wrapping_sub(offset as i32)
 }
 
-fn unshift_codepoint(shifted_codepoint: i32, offset: isize) -> u32 {
+const fn unshift_codepoint(shifted_codepoint: i32, offset: isize) -> u32 {
     shifted_codepoint.wrapping_add(offset as i32) as u32
 }
 

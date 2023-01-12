@@ -23,13 +23,13 @@ pub struct Tryte(pub u16);
 pub const ZERO: Tryte = Tryte(trit::BIN_ZERO);
 
 impl Tryte {
-    pub fn get_trit(self, i: usize) -> Trit {
+    pub const fn get_trit(self, i: usize) -> Trit {
         let shf = (i as u16) * 2;
         let bits = self.0 >> shf & trit::BITMASK;
         Trit(bits)
     }
 
-    pub fn set_trit(self, i: usize, trit: Trit) -> Self {
+    pub const fn set_trit(self, i: usize, trit: Trit) -> Self {
         let shf = (i as u16) * 2;
         let zero_bits = !(0b11 << shf);
         let tryte_bits = self.0 & zero_bits;
@@ -57,28 +57,28 @@ impl Tryte {
         Ok(writer.write_u16::<LittleEndian>(self.0)?)
     }
 
-    fn from_hytes(low_hyte: u8, high_hyte: u8) -> Self {
+    const fn from_hytes(low_hyte: u8, high_hyte: u8) -> Self {
         let bits = (high_hyte as u16) << HYTE_BIT_LEN | (low_hyte as u16);
         Tryte(bits)
     }
 
-    fn low_hyte(self) -> u8 {
+    const fn low_hyte(self) -> u8 {
         self.0 as u8 & HYTE_BITMASK
     }
 
-    fn high_hyte(self) -> u8 {
+    const fn high_hyte(self) -> u8 {
         (self.0 >> HYTE_BIT_LEN) as u8 & HYTE_BITMASK
     }
 
-    fn hytes(self) -> (u8, u8) {
+    const fn hytes(self) -> (u8, u8) {
         (self.low_hyte(), self.high_hyte())
     }
 
-    pub fn low_trit4(self) -> u8 {
+    pub const fn low_trit4(self) -> u8 {
         self.0 as u8
     }
 
-    fn negation_bits(self) -> u16 {
+    const fn negation_bits(self) -> u16 {
         self.0 << 1 & SIGN_BITMASK
     }
 
