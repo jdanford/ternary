@@ -1,5 +1,5 @@
-pub const TRIT2_TO_AND: [u16; 16] = {
-    let mut table = [u16::MAX; 16];
+pub const TRIT2_TO_AND: [u8; 16] = {
+    let mut table = [u8::MAX; 16];
 
     table[0b00_00] = 0b00;
     table[0b00_01] = 0b00;
@@ -14,8 +14,8 @@ pub const TRIT2_TO_AND: [u16; 16] = {
     table
 };
 
-pub const TRIT2_TO_CMP: [u16; 16] = {
-    let mut table = [u16::MAX; 16];
+pub const TRIT2_TO_CMP: [u8; 16] = {
+    let mut table = [u8::MAX; 16];
 
     table[0b00_00] = 0b00;
     table[0b00_01] = 0b11;
@@ -30,8 +30,8 @@ pub const TRIT2_TO_CMP: [u16; 16] = {
     table
 };
 
-pub const TRIT2_TO_OR: [u16; 16] = {
-    let mut table = [u16::MAX; 16];
+pub const TRIT2_TO_OR: [u8; 16] = {
+    let mut table = [u8::MAX; 16];
 
     table[0b00_00] = 0b00;
     table[0b00_01] = 0b01;
@@ -46,8 +46,8 @@ pub const TRIT2_TO_OR: [u16; 16] = {
     table
 };
 
-pub const TRIT2_TO_PRODUCT: [u16; 16] = {
-    let mut table = [u16::MAX; 16];
+pub const TRIT2_TO_PRODUCT: [u8; 16] = {
+    let mut table = [u8::MAX; 16];
 
     table[0b00_00] = 0b00;
     table[0b00_01] = 0b00;
@@ -62,8 +62,8 @@ pub const TRIT2_TO_PRODUCT: [u16; 16] = {
     table
 };
 
-pub const TRIT3_TO_SUM_AND_CARRY: [(u16, u16); 64] = {
-    let mut table = [(u16::MAX, u16::MAX); 64];
+pub const TRIT3_TO_SUM_AND_CARRY: [(u8, u8); 64] = {
+    let mut table = [(u8::MAX, u8::MAX); 64];
 
     table[0b00_00_00] = (0b00, 0b00);
     table[0b00_00_01] = (0b01, 0b00);

@@ -8,16 +8,11 @@
         clippy::cast_sign_loss,
         clippy::missing_docs_in_private_items,
         clippy::missing_errors_doc,
-        clippy::must_use_candidate,
-        clippy::non_ascii_literal,
-        clippy::return_self_not_must_use,
     )
 )]
 
-extern crate byteorder;
-
-mod core;
 pub mod constants;
+mod core;
 pub mod error;
 mod hyte;
 pub mod tables;

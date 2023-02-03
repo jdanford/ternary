@@ -61,8 +61,8 @@ pub trait Ternary {
 
         for i in (0..self.trit_len()).rev() {
             let trit = self.get_trit(i);
-            let t: i16 = trit.into();
-            n = n * 3 + t as i64;
+            let t: i8 = trit.into();
+            n = n * 3 + i64::from(t);
         }
 
         n
@@ -140,7 +140,7 @@ pub trait Ternary {
         for i in (0..self.trit_len()).rev() {
             let trit = self.get_trit(i);
             let c: char = trit.into();
-            write!(writer, "{}", c)?;
+            write!(writer, "{c}")?;
         }
 
         Ok(())
@@ -1039,7 +1039,7 @@ mod tests {
         F: FnMut(&mut [Tryte], &[Tryte]),
     {
         let mut trytes1 = clone_slice(trytes1);
-        f(&mut trytes1[..], &trytes2);
+        f(&mut trytes1[..], trytes2);
         trytes1
     }
 
@@ -1053,7 +1053,7 @@ mod tests {
         F: FnMut(&mut [Tryte], &[Tryte], &[Tryte]),
     {
         let mut trytes1 = clone_slice(trytes1);
-        f(&mut trytes1[..], &trytes2, &trytes3);
+        f(&mut trytes1[..], trytes2, trytes3);
         trytes1
     }
 
@@ -1075,7 +1075,7 @@ mod tests {
         F: FnMut(&mut [Tryte], &[Tryte]) -> Result<()>,
     {
         let mut trytes1 = clone_slice(trytes1);
-        f(&mut trytes1[..], &trytes2)?;
+        f(&mut trytes1[..], trytes2)?;
         Ok(trytes1)
     }
 }

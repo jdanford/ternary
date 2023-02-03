@@ -187,6 +187,7 @@ pub fn decode_char(src: &[Tryte]) -> Result<(char, usize)> {
     Ok((c, len))
 }
 
+#[must_use]
 pub fn invalid_encoding_from_trytes(src: &[Tryte]) -> Error {
     let mut bytes = Vec::new();
     src.write_trits(&mut bytes).expect("error writing trits");

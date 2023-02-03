@@ -1,7 +1,4 @@
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(clippy::from_over_into)
-)]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::from_over_into))]
 
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -13,12 +10,12 @@ use super::tables::{
     TRIT2_TO_AND, TRIT2_TO_CMP, TRIT2_TO_OR, TRIT2_TO_PRODUCT, TRIT3_TO_SUM_AND_CARRY,
 };
 
-pub const BITMASK: u16 = 0b11;
+pub const BITMASK: u8 = 0b11;
 
-pub const BIN_ZERO: u16 = 0b00;
-pub const BIN_POS: u16 = 0b01;
-pub const BIN_INVALID: u16 = 0b10;
-pub const BIN_NEG: u16 = 0b11;
+pub const BIN_ZERO: u8 = 0b00;
+pub const BIN_POS: u8 = 0b01;
+pub const BIN_INVALID: u8 = 0b10;
+pub const BIN_NEG: u8 = 0b11;
 
 pub const CHAR_ZERO: char = '0';
 pub const CHAR_POS: char = '1';
@@ -26,7 +23,7 @@ pub const CHAR_INVALID: char = '?';
 pub const CHAR_NEG: char = 'T';
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct Trit(pub u16);
+pub struct Trit(pub(crate) u8);
 
 pub const ZERO: Trit = Trit(BIN_ZERO);
 pub const POS: Trit = Trit(BIN_POS);
@@ -34,7 +31,7 @@ pub const NEG: Trit = Trit(BIN_NEG);
 
 impl Trit {
     pub const fn from_trit4(trit4: u8) -> Result<Self> {
-        let trit_bits = trit4 as u16 & BITMASK;
+        let trit_bits = trit4 & BITMASK;
         if trit_bits == BIN_INVALID {
             return Err(Error::InvalidBitPattern(trit_bits as u64));
         }
@@ -42,22 +39,25 @@ impl Trit {
         Ok(Trit(trit_bits))
     }
 
-    const fn negation_bits(self) -> u16 {
+    const fn negation_bits(self) -> u8 {
         self.0 << 1 & BITMASK
     }
 
+    #[must_use]
     pub const fn tcmp(self, rhs: Self) -> Self {
         let i = trit2_index(self, rhs);
         let bits = TRIT2_TO_CMP[i];
         Trit(bits)
     }
 
+    #[must_use]
     pub const fn add_with_carry(self, rhs: Self, carry_in: Self) -> (Self, Self) {
         let i = trit3_index(self, rhs, carry_in);
         let (sum, carry) = TRIT3_TO_SUM_AND_CARRY[i];
         (Trit(sum), Trit(carry))
     }
 
+    #[must_use]
     pub const fn into_index(self) -> usize {
         self.0 as usize
     }
@@ -71,26 +71,26 @@ const fn trit3_index(a: Trit, b: Trit, c: Trit) -> usize {
     a.into_index() << 4 | b.into_index() << 2 | c.into_index()
 }
 
-const TRIT_TO_I16: [i16; 4] = [0, 1, 0, -1];
+const TRIT_TO_I8: [i8; 4] = [0, 1, 0, -1];
 
-impl Into<i16> for Trit {
-    fn into(self) -> i16 {
-        TRIT_TO_I16[self.into_index()]
+impl Into<i8> for Trit {
+    fn into(self) -> i8 {
+        TRIT_TO_I8[self.into_index()]
     }
 }
 
-const U16_TO_TRIT: [u16; 3] = [BIN_NEG, BIN_ZERO, BIN_POS];
+const U8_TO_TRIT: [u8; 3] = [BIN_NEG, BIN_ZERO, BIN_POS];
 
-impl TryFrom<i16> for Trit {
+impl TryFrom<i8> for Trit {
     type Error = Error;
 
-    fn try_from(n: i16) -> Result<Self> {
+    fn try_from(n: i8) -> Result<Self> {
         let uint = (n + 1) as usize;
         if uint < 3 {
-            let bits = U16_TO_TRIT[uint];
+            let bits = U8_TO_TRIT[uint];
             Ok(Trit(bits))
         } else {
-            Err(Error::IntegerOutOfBounds(-1, 1, n as i64))
+            Err(Error::IntegerOutOfBounds(-1, 1, i64::from(n)))
         }
     }
 }
@@ -111,7 +111,7 @@ impl TryFrom<char> for Trit {
             'T' => Ok(Trit(BIN_NEG)),
             '0' => Ok(Trit(BIN_ZERO)),
             '1' => Ok(Trit(BIN_POS)),
-            _ => Err(Error::InvalidCharacter(c))
+            _ => Err(Error::InvalidCharacter(c)),
         }
     }
 }
@@ -212,14 +212,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn trit_into_i16() {
-        assert_eq!(-1_i16, Trit(BIN_NEG).into());
-        assert_eq!(0_i16, Trit(BIN_ZERO).into());
-        assert_eq!(1_i16, Trit(BIN_POS).into());
+    fn trit_into_i8() {
+        assert_eq!(-1_i8, Trit(BIN_NEG).into());
+        assert_eq!(0_i8, Trit(BIN_ZERO).into());
+        assert_eq!(1_i8, Trit(BIN_POS).into());
     }
 
     #[test]
-    fn trit_from_i16() {
+    fn trit_from_i8() {
         assert_eq!(Ok(Trit(BIN_NEG)), Trit::try_from(-1));
         assert_eq!(Ok(Trit(BIN_ZERO)), Trit::try_from(0));
         assert_eq!(Ok(Trit(BIN_POS)), Trit::try_from(1));

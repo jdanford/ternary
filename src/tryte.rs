@@ -18,22 +18,29 @@ pub const HYTE_BITMASK: u8 = 0b11_11_11;
 const SIGN_BITMASK: u16 = 0b10_10_10_10_10_10;
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct Tryte(pub u16);
+pub struct Tryte(pub(crate) u16);
 
-pub const ZERO: Tryte = Tryte(trit::BIN_ZERO);
+pub const ZERO: Tryte = Tryte::from_trit(trit::ZERO);
 
 impl Tryte {
+    #[must_use]
+    pub const fn from_trit(trit: Trit) -> Self {
+        Tryte(trit.0 as u16)
+    }
+
+    #[must_use]
     pub const fn get_trit(self, i: usize) -> Trit {
         let shf = (i as u16) * 2;
-        let bits = self.0 >> shf & trit::BITMASK;
+        let bits = ((self.0 >> shf) as u8) & trit::BITMASK;
         Trit(bits)
     }
 
+    #[must_use]
     pub const fn set_trit(self, i: usize, trit: Trit) -> Self {
         let shf = (i as u16) * 2;
         let zero_bits = !(0b11 << shf);
         let tryte_bits = self.0 & zero_bits;
-        let trit_bits = trit.0 << shf;
+        let trit_bits = (trit.0 as u16) << shf;
         let bits = (tryte_bits | trit_bits) & BITMASK;
         Tryte(bits)
     }
@@ -46,7 +53,7 @@ impl Tryte {
             let trit = tryte.get_trit(i);
             let trit_bits = trit.0;
             if trit_bits == trit::BIN_INVALID {
-                return Err(Error::InvalidBitPattern(trit_bits as u64));
+                return Err(Error::InvalidBitPattern(u64::from(trit_bits)));
             }
         }
 
@@ -74,6 +81,7 @@ impl Tryte {
         (self.low_hyte(), self.high_hyte())
     }
 
+    #[must_use]
     pub const fn low_trit4(self) -> u8 {
         self.0 as u8
     }
@@ -82,6 +90,7 @@ impl Tryte {
         self.0 << 1 & SIGN_BITMASK
     }
 
+    #[must_use]
     pub fn add_with_carry(self, rhs: Self, carry: Trit) -> (Self, Trit) {
         let mut tryte = ZERO;
         let mut carry = carry;
@@ -119,13 +128,13 @@ impl Tryte {
         let (low_hyte, high_hyte) = self.hytes();
         let low_char = hyte::into_char(low_hyte);
         let high_char = hyte::into_char(high_hyte);
-        write!(writer, "{}{}", high_char, low_char)
+        write!(writer, "{high_char}{low_char}")
     }
 }
 
 impl From<Trit> for Tryte {
     fn from(trit: Trit) -> Self {
-        Tryte(trit.0)
+        Tryte(u16::from(trit.0))
     }
 }
 
@@ -134,10 +143,10 @@ impl TryInto<Trit> for Tryte {
 
     fn try_into(self) -> Result<Trit> {
         let bits = self.0;
-        if bits == trit::BIN_INVALID || bits > trit::BIN_NEG {
-            Err(Error::InvalidBitPattern(bits as u64))
+        if bits == trit::BIN_INVALID.into() || bits > trit::BIN_NEG.into() {
+            Err(Error::InvalidBitPattern(u64::from(bits)))
         } else {
-            Ok(Trit(bits))
+            Ok(Trit(bits as u8))
         }
     }
 }
@@ -162,7 +171,7 @@ impl fmt::Display for Tryte {
         let (low_hyte, high_hyte) = self.hytes();
         let low_char = hyte::into_char(low_hyte);
         let high_char = hyte::into_char(high_hyte);
-        write!(f, "{}{}", high_char, low_char)
+        write!(f, "{high_char}{low_char}")
     }
 }
 
@@ -207,7 +216,7 @@ mod tests {
 
     fn from_bytes(low: u8, high: u8) -> Result<Tryte> {
         let mut cursor = Cursor::new(vec![low, high]);
-        Ok(Tryte::from_bytes(&mut cursor)?)
+        Tryte::from_bytes(&mut cursor)
     }
 
     #[test]
@@ -229,13 +238,13 @@ mod tests {
 
     #[test]
     fn tryte_display_hytes() {
-        assert_eq!("mm", format!("{}", TRYTE_MIN));
-        assert_eq!("bj", format!("{}", TRYTE_NEG64));
-        assert_eq!("0a", format!("{}", TRYTE_NEG1));
-        assert_eq!("00", format!("{}", TRYTE_0));
-        assert_eq!("0A", format!("{}", TRYTE_1));
-        assert_eq!("BJ", format!("{}", TRYTE_64));
-        assert_eq!("MM", format!("{}", TRYTE_MAX));
+        assert_eq!("mm", format!("{TRYTE_MIN}"));
+        assert_eq!("bj", format!("{TRYTE_NEG64}"));
+        assert_eq!("0a", format!("{TRYTE_NEG1}"));
+        assert_eq!("00", format!("{TRYTE_0}"));
+        assert_eq!("0A", format!("{TRYTE_1}"));
+        assert_eq!("BJ", format!("{TRYTE_64}"));
+        assert_eq!("MM", format!("{TRYTE_MAX}"));
     }
 
     #[test]

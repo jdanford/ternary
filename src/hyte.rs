@@ -2,7 +2,7 @@ use super::error::{Error, Result};
 use super::trit::{BIN_INVALID, CHAR_INVALID};
 
 const CHAR_TO_HYTE: [u8; 256] = {
-    let mut table = [BIN_INVALID as u8; 256];
+    let mut table = [BIN_INVALID; 256];
 
     table['m' as usize] = 0b11_11_11;
     table['l' as usize] = 0b11_11_00;
@@ -37,7 +37,7 @@ const CHAR_TO_HYTE: [u8; 256] = {
 
 pub const fn try_from_char(c: char) -> Result<u8> {
     let hyte = CHAR_TO_HYTE[c as usize];
-    if hyte == (BIN_INVALID as u8) {
+    if hyte == BIN_INVALID {
         Err(Error::InvalidCharacter(c))
     } else {
         Ok(hyte)
