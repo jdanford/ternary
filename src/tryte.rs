@@ -91,6 +91,21 @@ impl Tryte {
     }
 
     #[must_use]
+    pub const fn neg(self) -> Self {
+        let bits = self.0 ^ self.negation_bits();
+        Tryte(bits)
+    }
+
+    pub const fn try_into_trit(self) -> Result<Trit> {
+        let bits = self.0;
+        if bits == trit::BIN_INVALID as u16 || bits > trit::BIN_NEG as u16 {
+            Err(Error::InvalidBitPattern(bits as u64))
+        } else {
+            Ok(Trit(bits as u8))
+        }
+    }
+
+    #[must_use]
     pub fn add_with_carry(self, rhs: Self, carry: Trit) -> (Self, Trit) {
         let mut tryte = ZERO;
         let mut carry = carry;
@@ -134,7 +149,7 @@ impl Tryte {
 
 impl From<Trit> for Tryte {
     fn from(trit: Trit) -> Self {
-        Tryte(u16::from(trit.0))
+        Tryte::from_trit(trit)
     }
 }
 
@@ -142,12 +157,7 @@ impl TryInto<Trit> for Tryte {
     type Error = Error;
 
     fn try_into(self) -> Result<Trit> {
-        let bits = self.0;
-        if bits == trit::BIN_INVALID.into() || bits > trit::BIN_NEG.into() {
-            Err(Error::InvalidBitPattern(u64::from(bits)))
-        } else {
-            Ok(Trit(bits as u8))
-        }
+        self.try_into_trit()
     }
 }
 
@@ -155,8 +165,7 @@ impl ops::Neg for Tryte {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let bits = self.0 ^ self.negation_bits();
-        Tryte(bits)
+        self.neg()
     }
 }
 

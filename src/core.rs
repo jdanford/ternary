@@ -1,6 +1,5 @@
 use std::convert::TryFrom;
 use std::io;
-use std::ops::{BitAnd, BitOr, Mul, Neg};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
@@ -168,11 +167,11 @@ pub fn negate<T: Ternary + ?Sized>(dest: &mut T, src: &T) {
 }
 
 pub fn and<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
-    zip_trits(dest, lhs, rhs, Trit::bitand);
+    zip_trits(dest, lhs, rhs, Trit::and);
 }
 
 pub fn or<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
-    zip_trits(dest, lhs, rhs, Trit::bitor);
+    zip_trits(dest, lhs, rhs, Trit::or);
 }
 
 pub fn tcmp<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {

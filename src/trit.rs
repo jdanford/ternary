@@ -30,6 +30,47 @@ pub const POS: Trit = Trit(BIN_POS);
 pub const NEG: Trit = Trit(BIN_NEG);
 
 impl Trit {
+    const fn into_i8(self) -> i8 {
+        TRIT_TO_I8[self.into_index()]
+    }
+
+    pub const fn try_from_i8(n: i8) -> Result<Self> {
+        let uint = (n + 1) as usize;
+        if uint < 3 {
+            let bits = U8_TO_TRIT[uint];
+            Ok(Trit(bits))
+        } else {
+            Err(Error::IntegerOutOfBounds(-1, 1, n as i64))
+        }
+    }
+
+    #[must_use]
+    pub const fn into_char(self) -> char {
+        TRIT_TO_CHAR[self.into_index()]
+    }
+
+    pub const fn try_from_char(c: char) -> Result<Self> {
+        match c {
+            'T' => Ok(Trit(BIN_NEG)),
+            '0' => Ok(Trit(BIN_ZERO)),
+            '1' => Ok(Trit(BIN_POS)),
+            _ => Err(Error::InvalidCharacter(c)),
+        }
+    }
+
+    #[must_use]
+    pub const fn into_ordering(self) -> Ordering {
+        TRIT_TO_ORDERING[self.into_index()]
+    }
+
+    pub const fn try_from_ordering(ordering: Ordering) -> Result<Self> {
+        match ordering {
+            Ordering::Less => Ok(NEG),
+            Ordering::Equal => Ok(ZERO),
+            Ordering::Greater => Ok(POS),
+        }
+    }
+
     pub const fn from_trit4(trit4: u8) -> Result<Self> {
         let trit_bits = trit4 & BITMASK;
         if trit_bits == BIN_INVALID {
@@ -61,6 +102,33 @@ impl Trit {
     pub const fn into_index(self) -> usize {
         self.0 as usize
     }
+
+    #[must_use]
+    pub const fn neg(self) -> Self {
+        let bits = self.0 ^ self.negation_bits();
+        Trit(bits)
+    }
+
+    #[must_use]
+    pub const fn and(self, rhs: Self) -> Self {
+        let i = trit2_index(self, rhs);
+        let bits = TRIT2_TO_AND[i];
+        Trit(bits)
+    }
+
+    #[must_use]
+    pub const fn or(self, rhs: Self) -> Self {
+        let i = trit2_index(self, rhs);
+        let bits = TRIT2_TO_OR[i];
+        Trit(bits)
+    }
+
+    #[must_use]
+    pub const fn mul(self, rhs: Self) -> Self {
+        let i = trit2_index(self, rhs);
+        let bits = TRIT2_TO_PRODUCT[i];
+        Trit(bits)
+    }
 }
 
 const fn trit2_index(a: Trit, b: Trit) -> usize {
@@ -75,7 +143,7 @@ const TRIT_TO_I8: [i8; 4] = [0, 1, 0, -1];
 
 impl Into<i8> for Trit {
     fn into(self) -> i8 {
-        TRIT_TO_I8[self.into_index()]
+        self.into_i8()
     }
 }
 
@@ -85,13 +153,7 @@ impl TryFrom<i8> for Trit {
     type Error = Error;
 
     fn try_from(n: i8) -> Result<Self> {
-        let uint = (n + 1) as usize;
-        if uint < 3 {
-            let bits = U8_TO_TRIT[uint];
-            Ok(Trit(bits))
-        } else {
-            Err(Error::IntegerOutOfBounds(-1, 1, i64::from(n)))
-        }
+        Self::try_from_i8(n)
     }
 }
 
@@ -99,7 +161,7 @@ const TRIT_TO_CHAR: [char; 4] = [CHAR_ZERO, CHAR_POS, CHAR_INVALID, CHAR_NEG];
 
 impl Into<char> for Trit {
     fn into(self) -> char {
-        TRIT_TO_CHAR[self.into_index()]
+        self.into_char()
     }
 }
 
@@ -107,12 +169,7 @@ impl TryFrom<char> for Trit {
     type Error = Error;
 
     fn try_from(c: char) -> Result<Self> {
-        match c {
-            'T' => Ok(Trit(BIN_NEG)),
-            '0' => Ok(Trit(BIN_ZERO)),
-            '1' => Ok(Trit(BIN_POS)),
-            _ => Err(Error::InvalidCharacter(c)),
-        }
+        Self::try_from_char(c)
     }
 }
 
@@ -125,7 +182,7 @@ const TRIT_TO_ORDERING: [Ordering; 4] = [
 
 impl Into<Ordering> for Trit {
     fn into(self) -> Ordering {
-        TRIT_TO_ORDERING[self.into_index()]
+        self.into_ordering()
     }
 }
 
@@ -133,11 +190,7 @@ impl TryFrom<Ordering> for Trit {
     type Error = Error;
 
     fn try_from(ordering: Ordering) -> Result<Self> {
-        match ordering {
-            Ordering::Less => Ok(NEG),
-            Ordering::Equal => Ok(ZERO),
-            Ordering::Greater => Ok(POS),
-        }
+        Self::try_from_ordering(ordering)
     }
 }
 
@@ -158,8 +211,7 @@ impl ops::Neg for Trit {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let bits = self.0 ^ self.negation_bits();
-        Trit(bits)
+        self.neg()
     }
 }
 
@@ -175,9 +227,7 @@ impl ops::BitAnd for Trit {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        let i = trit2_index(self, rhs);
-        let bits = TRIT2_TO_AND[i];
-        Trit(bits)
+        self.and(rhs)
     }
 }
 
@@ -185,9 +235,7 @@ impl ops::BitOr for Trit {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        let i = trit2_index(self, rhs);
-        let bits = TRIT2_TO_OR[i];
-        Trit(bits)
+        self.or(rhs)
     }
 }
 
@@ -195,9 +243,7 @@ impl ops::Mul for Trit {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let i = trit2_index(self, rhs);
-        let bits = TRIT2_TO_PRODUCT[i];
-        Trit(bits)
+        self.mul(rhs)
     }
 }
 
