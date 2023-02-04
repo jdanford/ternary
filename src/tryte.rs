@@ -83,16 +83,14 @@ impl Tryte {
     }
 
     pub fn from_bytes<R: ReadBytesExt>(reader: &mut R) -> Result<Self> {
-        let bits = reader
-            .read_u16::<LittleEndian>()
-            .map_err(|_| Error::IoError)?;
+        let bits = reader.read_u16::<LittleEndian>().map_err(|_| Error::Io)?;
         bits.try_into()
     }
 
     pub fn write_bytes<W: WriteBytesExt>(self, writer: &mut W) -> Result<()> {
         writer
             .write_u16::<LittleEndian>(self.into())
-            .map_err(|_| Error::IoError)
+            .map_err(|_| Error::Io)
     }
 
     const fn from_hytes(low_hyte: u8, high_hyte: u8) -> Self {

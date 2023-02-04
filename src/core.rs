@@ -116,7 +116,7 @@ pub trait Ternary {
     fn write_hytes<W: Write>(&self, writer: &mut W) -> Result<()> {
         for i in (0..self.tryte_len()).rev() {
             let tryte = self.get_tryte(i);
-            tryte.write_hytes(writer).map_err(|_| Error::FormatError)?;
+            tryte.write_hytes(writer).map_err(|_| Error::Format)?;
         }
 
         Ok(())
@@ -139,7 +139,7 @@ pub trait Ternary {
         for i in (0..self.trit_len()).rev() {
             let trit = self.get_trit(i);
             let c: char = trit.into();
-            write!(writer, "{c}").map_err(|_| Error::FormatError)?;
+            write!(writer, "{c}").map_err(|_| Error::Format)?;
         }
 
         Ok(())
