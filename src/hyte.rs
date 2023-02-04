@@ -1,5 +1,5 @@
-use super::error::{Error, Result};
-use super::trit::{BIN_INVALID, CHAR_INVALID};
+use crate::error::{Error, Result};
+use crate::trit::{BIN_INVALID, CHAR_INVALID};
 
 const CHAR_TO_HYTE: [u8; 256] = {
     let mut table = [BIN_INVALID; 256];

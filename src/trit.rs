@@ -5,8 +5,8 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::ops;
 
-use super::error::{Error, Result};
-use super::tables::{
+use crate::error::{Error, Result};
+use crate::tables::{
     TRIT2_TO_AND, TRIT2_TO_CMP, TRIT2_TO_OR, TRIT2_TO_PRODUCT, TRIT3_TO_SUM_AND_CARRY,
 };
 
@@ -255,7 +255,7 @@ impl fmt::Debug for Trit {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::trit::{Trit, BIN_NEG, BIN_POS, BIN_ZERO, NEG, POS, ZERO};
 
     #[test]
     fn trit_into_i8() {

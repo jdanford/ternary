@@ -1,11 +1,11 @@
 use std::char;
 
-use super::constants::WORD_LEN;
-use super::error::{Error, Result};
-use super::trit;
-use super::tryte;
-use super::tryte::Tryte;
-use super::Ternary;
+use crate::constants::WORD_LEN;
+use crate::core::Ternary;
+use crate::error::{Error, Result};
+use crate::trit;
+use crate::tryte;
+use crate::tryte::Tryte;
 
 const SINGLE_RANGE: usize = 243;
 const DOUBLE_RANGE: usize = 19_683;
@@ -24,7 +24,8 @@ const DOUBLE_MAX: usize = DOUBLE_MIN + DOUBLE_RANGE - 1;
 const TRIPLE_MIN: usize = DOUBLE_MAX + 1;
 const TRIPLE_MAX: usize = TRIPLE_MIN + TRIPLE_RANGE - 1;
 
-// const SINGLE_START_BITMASK: u16 = 0b00_11_11_11_11_11;
+#[allow(dead_code)]
+const SINGLE_START_BITMASK: u16 = 0b00_11_11_11_11_11;
 
 const DOUBLE_START_BITMASK: u16 = 0b00_00_11_11_11_11;
 const DOUBLE_START_PATTERN: u16 = 0b01_00_00_00_00_00;
@@ -79,7 +80,7 @@ pub fn encode_char(dest: &mut [Tryte], c: char) -> Result<usize> {
     let src = {
         let mut tmp = [tryte::ZERO; WORD_LEN];
         let shifted_codepoint = shift_codepoint(codepoint, codepoint_offset);
-        tmp.read_i64(shifted_codepoint as i64)?;
+        tmp.read_i64(i64::from(shifted_codepoint))?;
         tmp
     };
 
@@ -205,7 +206,10 @@ const fn unshift_codepoint(shifted_codepoint: i32, offset: isize) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{
+        text::{decode_str, encode_str},
+        tryte,
+    };
 
     #[test]
     fn text_encode_decode() {

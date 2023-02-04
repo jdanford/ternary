@@ -5,13 +5,13 @@ use std::ops;
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-use super::constants::HYTE_BIT_LEN;
-use super::error::{Error, Result};
-use super::hyte;
-use super::trit;
-use super::trit::Trit;
+use crate::constants::HYTE_BIT_LEN;
+use crate::error::{Error, Result};
+use crate::hyte;
+use crate::trit;
+use crate::trit::Trit;
 
-pub use super::constants::TRYTE_TRIT_LEN as TRIT_LEN;
+pub use crate::constants::TRYTE_TRIT_LEN as TRIT_LEN;
 
 pub const BITMASK: u16 = 0b11_11_11_11_11_11;
 pub const HYTE_BITMASK: u8 = 0b11_11_11;
@@ -46,7 +46,9 @@ impl Tryte {
     }
 
     pub fn from_bytes<R: ReadBytesExt>(reader: &mut R) -> Result<Self> {
-        let bits = reader.read_u16::<LittleEndian>()?;
+        let bits = reader
+            .read_u16::<LittleEndian>()
+            .map_err(|_| Error::IoError)?;
         let tryte = Tryte(bits);
 
         for i in 0..TRIT_LEN {
@@ -61,7 +63,9 @@ impl Tryte {
     }
 
     pub fn write_bytes<W: WriteBytesExt>(self, writer: &mut W) -> Result<()> {
-        Ok(writer.write_u16::<LittleEndian>(self.0)?)
+        writer
+            .write_u16::<LittleEndian>(self.0)
+            .map_err(|_| Error::IoError)
     }
 
     const fn from_hytes(low_hyte: u8, high_hyte: u8) -> Self {
@@ -186,12 +190,12 @@ impl fmt::Display for Tryte {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_constants::{
+    use std::io::Cursor;
+
+    use crate::test_constants::{
         TRYTE_0, TRYTE_1, TRYTE_64, TRYTE_MAX, TRYTE_MIN, TRYTE_NEG1, TRYTE_NEG64,
     };
-    use super::*;
-
-    use std::io::Cursor;
+    use crate::{trit, Result, Trit, Tryte};
 
     #[test]
     fn tryte_into_trit() {
