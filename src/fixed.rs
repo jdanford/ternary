@@ -271,11 +271,11 @@ mod tests {
 
     #[test]
     fn ternary_read_i64() {
-        assert_eq!(&TRYTE4_MIN, &tryte4_from_int(WORD_MIN).unwrap());
-        assert_eq!(&TRYTE4_NEG1, &tryte4_from_int(-1).unwrap());
-        assert_eq!(&TRYTE4_0, &tryte4_from_int(0).unwrap());
-        assert_eq!(&TRYTE4_1, &tryte4_from_int(1).unwrap());
-        assert_eq!(&TRYTE4_MAX, &tryte4_from_int(WORD_MAX).unwrap());
+        assert_eq!(TRYTE4_MIN, tryte4_from_int(WORD_MIN).unwrap());
+        assert_eq!(TRYTE4_NEG1, tryte4_from_int(-1).unwrap());
+        assert_eq!(TRYTE4_0, tryte4_from_int(0).unwrap());
+        assert_eq!(TRYTE4_1, tryte4_from_int(1).unwrap());
+        assert_eq!(TRYTE4_MAX, tryte4_from_int(WORD_MAX).unwrap());
 
         assert!(tryte4_from_int(i64::min_value()).is_err());
         assert!(tryte4_from_int(i64::max_value()).is_err());
@@ -287,11 +287,11 @@ mod tests {
 
     #[test]
     fn ternary_read_bytes() {
-        assert_eq!(&TRYTE4_MIN, &tryte4_from_bytes(&BYTES_MIN).unwrap());
-        assert_eq!(&TRYTE4_NEG1, &tryte4_from_bytes(&BYTES_NEG1).unwrap());
-        assert_eq!(&TRYTE4_0, &tryte4_from_bytes(&BYTES_0).unwrap());
-        assert_eq!(&TRYTE4_1, &tryte4_from_bytes(&BYTES_1).unwrap());
-        assert_eq!(&TRYTE4_MAX, &tryte4_from_bytes(&BYTES_MAX).unwrap());
+        assert_eq!(TRYTE4_MIN, tryte4_from_bytes(&BYTES_MIN).unwrap());
+        assert_eq!(TRYTE4_NEG1, tryte4_from_bytes(&BYTES_NEG1).unwrap());
+        assert_eq!(TRYTE4_0, tryte4_from_bytes(&BYTES_0).unwrap());
+        assert_eq!(TRYTE4_1, tryte4_from_bytes(&BYTES_1).unwrap());
+        assert_eq!(TRYTE4_MAX, tryte4_from_bytes(&BYTES_MAX).unwrap());
     }
 
     fn tryte4_from_bytes(bytes: &[u8]) -> Result<[Tryte; 4]> {
@@ -302,14 +302,14 @@ mod tests {
 
     #[test]
     fn ternary_write_bytes() {
-        assert_eq!(&BYTES_MIN[..], &get_bytes(&TRYTE4_MIN));
-        assert_eq!(&BYTES_NEG1[..], &get_bytes(&TRYTE4_NEG1));
-        assert_eq!(&BYTES_0[..], &get_bytes(&TRYTE4_0));
-        assert_eq!(&BYTES_1[..], &get_bytes(&TRYTE4_1));
-        assert_eq!(&BYTES_MAX[..], &get_bytes(&TRYTE4_MAX));
+        assert_eq!(&BYTES_MIN[..], &get_bytes(TRYTE4_MIN));
+        assert_eq!(&BYTES_NEG1[..], &get_bytes(TRYTE4_NEG1));
+        assert_eq!(&BYTES_0[..], &get_bytes(TRYTE4_0));
+        assert_eq!(&BYTES_1[..], &get_bytes(TRYTE4_1));
+        assert_eq!(&BYTES_MAX[..], &get_bytes(TRYTE4_MAX));
     }
 
-    fn get_bytes<const N: usize>(trytes: &[Tryte; N]) -> Vec<u8> {
+    fn get_bytes<const N: usize>(trytes: [Tryte; N]) -> Vec<u8> {
         let mut bytes = vec![];
         trytes.write_bytes(&mut bytes).unwrap();
         bytes
@@ -317,11 +317,11 @@ mod tests {
 
     #[test]
     fn ternary_read_hytes() {
-        assert_eq!(&TRYTE4_MIN, &tryte4_from_hyte_str("mmmmmmmm").unwrap());
-        assert_eq!(&TRYTE4_NEG1, &tryte4_from_hyte_str("0000000a").unwrap());
-        assert_eq!(&TRYTE4_0, &tryte4_from_hyte_str("00000000").unwrap());
-        assert_eq!(&TRYTE4_1, &tryte4_from_hyte_str("0000000A").unwrap());
-        assert_eq!(&TRYTE4_MAX, &tryte4_from_hyte_str("MMMMMMMM").unwrap());
+        assert_eq!(TRYTE4_MIN, tryte4_from_hyte_str("mmmmmmmm").unwrap());
+        assert_eq!(TRYTE4_NEG1, tryte4_from_hyte_str("0000000a").unwrap());
+        assert_eq!(TRYTE4_0, tryte4_from_hyte_str("00000000").unwrap());
+        assert_eq!(TRYTE4_1, tryte4_from_hyte_str("0000000A").unwrap());
+        assert_eq!(TRYTE4_MAX, tryte4_from_hyte_str("MMMMMMMM").unwrap());
     }
 
     fn tryte4_from_hyte_str(s: &str) -> Result<[Tryte; 4]> {
@@ -330,14 +330,14 @@ mod tests {
 
     #[test]
     fn ternary_display_hytes() {
-        assert_eq!("mmmmmmmm", get_hyte_str(&TRYTE4_MIN));
-        assert_eq!("0000000a", get_hyte_str(&TRYTE4_NEG1));
-        assert_eq!("00000000", get_hyte_str(&TRYTE4_0));
-        assert_eq!("0000000A", get_hyte_str(&TRYTE4_1));
-        assert_eq!("MMMMMMMM", get_hyte_str(&TRYTE4_MAX));
+        assert_eq!("mmmmmmmm", get_hyte_str(TRYTE4_MIN));
+        assert_eq!("0000000a", get_hyte_str(TRYTE4_NEG1));
+        assert_eq!("00000000", get_hyte_str(TRYTE4_0));
+        assert_eq!("0000000A", get_hyte_str(TRYTE4_1));
+        assert_eq!("MMMMMMMM", get_hyte_str(TRYTE4_MAX));
     }
 
-    fn get_hyte_str<const N: usize>(trytes: &[Tryte; N]) -> String {
+    fn get_hyte_str<const N: usize>(trytes: [Tryte; N]) -> String {
         let mut bytes = Vec::new();
         trytes.write_hytes(&mut bytes).unwrap();
         String::from_utf8_lossy(&bytes).into_owned()
@@ -346,24 +346,24 @@ mod tests {
     #[test]
     fn ternary_read_trits() {
         assert_eq!(
-            &TRYTE4_MIN,
-            &tryte4_from_trit_str("TTTTTTTTTTTTTTTTTTTTTTTT").unwrap()
+            TRYTE4_MIN,
+            tryte4_from_trit_str("TTTTTTTTTTTTTTTTTTTTTTTT").unwrap()
         );
         assert_eq!(
-            &TRYTE4_NEG1,
-            &tryte4_from_trit_str("00000000000000000000000T").unwrap()
+            TRYTE4_NEG1,
+            tryte4_from_trit_str("00000000000000000000000T").unwrap()
         );
         assert_eq!(
-            &TRYTE4_0,
-            &tryte4_from_trit_str("000000000000000000000000").unwrap()
+            TRYTE4_0,
+            tryte4_from_trit_str("000000000000000000000000").unwrap()
         );
         assert_eq!(
-            &TRYTE4_1,
-            &tryte4_from_trit_str("000000000000000000000001").unwrap()
+            TRYTE4_1,
+            tryte4_from_trit_str("000000000000000000000001").unwrap()
         );
         assert_eq!(
-            &TRYTE4_MAX,
-            &tryte4_from_trit_str("111111111111111111111111").unwrap()
+            TRYTE4_MAX,
+            tryte4_from_trit_str("111111111111111111111111").unwrap()
         );
     }
 

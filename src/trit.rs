@@ -29,6 +29,10 @@ pub const ZERO: Trit = Trit(BIN_ZERO);
 pub const POS: Trit = Trit(BIN_POS);
 pub const NEG: Trit = Trit(BIN_NEG);
 
+pub const _0: Trit = ZERO;
+pub const _1: Trit = POS;
+pub const _T: Trit = NEG;
+
 impl Trit {
     const fn into_i8(self) -> i8 {
         TRIT_TO_I8[self.into_index()]

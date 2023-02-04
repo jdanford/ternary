@@ -29,6 +29,23 @@ impl Tryte {
     }
 
     #[must_use]
+    pub const fn from_trits(t5: Trit, t4: Trit, t3: Trit, t2: Trit, t1: Trit, t0: Trit) -> Self {
+        let mut tryte = ZERO;
+        tryte = tryte.set_trit(5, t5);
+        tryte = tryte.set_trit(4, t4);
+        tryte = tryte.set_trit(3, t3);
+        tryte = tryte.set_trit(2, t2);
+        tryte = tryte.set_trit(1, t1);
+        tryte = tryte.set_trit(0, t0);
+        tryte
+    }
+
+    #[must_use]
+    pub const fn from_trits_le(t0: Trit, t1: Trit, t2: Trit, t3: Trit, t4: Trit, t5: Trit) -> Self {
+        Tryte::from_trits(t5, t4, t3, t2, t1, t0)
+    }
+
+    #[must_use]
     pub const fn get_trit(self, i: usize) -> Trit {
         let shf = (i as u16) * 2;
         let bits = ((self.0 >> shf) as u8) & trit::BITMASK;
