@@ -45,6 +45,26 @@ impl Tryte {
         Tryte::from_trits(t5, t4, t3, t2, t1, t0)
     }
 
+    const fn into_u16(self) -> u16 {
+        self.0
+    }
+
+    const fn try_from_u16(bits: u16) -> Result<Self> {
+        let tryte = Tryte(bits);
+
+        let mut i = 0;
+        while i < TRIT_LEN {
+            let trit = tryte.get_trit(i);
+            let trit_bits = trit.0;
+            if trit_bits == trit::BIN_INVALID {
+                return Err(Error::InvalidBitPattern(trit_bits as u64));
+            }
+            i += 1;
+        }
+
+        Ok(tryte)
+    }
+
     #[must_use]
     pub const fn get_trit(self, i: usize) -> Trit {
         let shf = (i as u16) * 2;
@@ -66,22 +86,12 @@ impl Tryte {
         let bits = reader
             .read_u16::<LittleEndian>()
             .map_err(|_| Error::IoError)?;
-        let tryte = Tryte(bits);
-
-        for i in 0..TRIT_LEN {
-            let trit = tryte.get_trit(i);
-            let trit_bits = trit.0;
-            if trit_bits == trit::BIN_INVALID {
-                return Err(Error::InvalidBitPattern(u64::from(trit_bits)));
-            }
-        }
-
-        Ok(tryte)
+        bits.try_into()
     }
 
     pub fn write_bytes<W: WriteBytesExt>(self, writer: &mut W) -> Result<()> {
         writer
-            .write_u16::<LittleEndian>(self.0)
+            .write_u16::<LittleEndian>(self.into())
             .map_err(|_| Error::IoError)
     }
 
@@ -179,6 +189,20 @@ impl TryInto<Trit> for Tryte {
 
     fn try_into(self) -> Result<Trit> {
         self.try_into_trit()
+    }
+}
+
+impl From<Tryte> for u16 {
+    fn from(value: Tryte) -> Self {
+        value.into_u16()
+    }
+}
+
+impl TryInto<Tryte> for u16 {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Tryte> {
+        Tryte::try_from_u16(self)
     }
 }
 
