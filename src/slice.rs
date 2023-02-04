@@ -279,7 +279,7 @@ mod tests {
     }
 
     fn tryte4_from_int(n: i64) -> Result<Vec<Tryte>> {
-        try_with_cloned_trytes(&TRYTE4_0, |ternary| ternary.read_i64(n))
+        try_with_cloned_trytes(&TRYTE4_0, |trytes| trytes.read_i64(n))
     }
 
     #[test]
@@ -292,8 +292,8 @@ mod tests {
     }
 
     fn tryte4_from_bytes(bytes: &[u8]) -> Result<Vec<Tryte>> {
-        try_with_cloned_trytes(&TRYTE4_0, |ternary| {
-            ternary.read_bytes(&mut Cursor::new(bytes))
+        try_with_cloned_trytes(&TRYTE4_0, |trytes| {
+            trytes.read_bytes(&mut Cursor::new(bytes))
         })
     }
 
@@ -322,7 +322,7 @@ mod tests {
     }
 
     fn tryte4_from_hyte_str(s: &str) -> Result<Vec<Tryte>> {
-        try_with_cloned_trytes(&TRYTE4_0, |ternary| ternary.read_hytes(s))
+        try_with_cloned_trytes(&TRYTE4_0, |trytes| trytes.read_hytes(s))
     }
 
     #[test]
@@ -365,7 +365,7 @@ mod tests {
     }
 
     fn tryte4_from_trit_str(s: &str) -> Result<Vec<Tryte>> {
-        try_with_cloned_trytes(&TRYTE4_0, |ternary| ternary.read_trits(s))
+        try_with_cloned_trytes(&TRYTE4_0, |trytes| trytes.read_trits(s))
     }
 
     #[test]
@@ -882,7 +882,7 @@ mod tests {
     }
 
     fn tryte12_from_trit_str(s: &str) -> Result<Vec<Tryte>> {
-        try_with_cloned_trytes(&TRYTE12_0, |ternary| ternary.read_trits(s))
+        try_with_cloned_trytes(&TRYTE12_0, |trytes| trytes.read_trits(s))
     }
 
     fn clone_slice<T: Clone>(slice: &[T]) -> Vec<T> {
