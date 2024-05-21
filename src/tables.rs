@@ -1,214 +1,184 @@
-pub const TRIT2_TO_AND: [u8; 16] = {
-    let mut table = [u8::MAX; 16];
+use crate::{
+    trit::{index2, index3, index4, _0, _1, _INVALID, _T},
+    Trit,
+};
 
-    table[0b00_00] = 0b00;
-    table[0b00_01] = 0b00;
-    table[0b00_11] = 0b11;
-    table[0b01_00] = 0b00;
-    table[0b01_01] = 0b01;
-    table[0b01_11] = 0b11;
-    table[0b11_00] = 0b11;
-    table[0b11_01] = 0b11;
-    table[0b11_11] = 0b11;
+const TRIT2_TABLE_SIZE: usize = 16;
+const TRIT3_TABLE_SIZE: usize = 64;
+const TRIT4_TABLE_SIZE: usize = 256;
+
+pub const TRIT2_TO_AND: [Trit; TRIT2_TABLE_SIZE] = {
+    let mut table = [_INVALID; TRIT2_TABLE_SIZE];
+
+    table[index2(_0, _0)] = _0;
+    table[index2(_0, _1)] = _0;
+    table[index2(_0, _T)] = _T;
+    table[index2(_1, _0)] = _0;
+    table[index2(_1, _1)] = _1;
+    table[index2(_1, _T)] = _T;
+    table[index2(_T, _0)] = _T;
+    table[index2(_T, _1)] = _T;
+    table[index2(_T, _T)] = _T;
 
     table
 };
 
-pub const TRIT2_TO_CMP: [u8; 16] = {
-    let mut table = [u8::MAX; 16];
+pub const TRIT2_TO_CMP: [Trit; TRIT2_TABLE_SIZE] = {
+    let mut table = [_INVALID; TRIT2_TABLE_SIZE];
 
-    table[0b00_00] = 0b00;
-    table[0b00_01] = 0b11;
-    table[0b00_11] = 0b01;
-    table[0b01_00] = 0b01;
-    table[0b01_01] = 0b00;
-    table[0b01_11] = 0b01;
-    table[0b11_00] = 0b11;
-    table[0b11_01] = 0b11;
-    table[0b11_11] = 0b00;
-
-    table
-};
-
-pub const TRIT2_TO_OR: [u8; 16] = {
-    let mut table = [u8::MAX; 16];
-
-    table[0b00_00] = 0b00;
-    table[0b00_01] = 0b01;
-    table[0b00_11] = 0b00;
-    table[0b01_00] = 0b01;
-    table[0b01_01] = 0b01;
-    table[0b01_11] = 0b01;
-    table[0b11_00] = 0b00;
-    table[0b11_01] = 0b01;
-    table[0b11_11] = 0b11;
+    table[index2(_0, _0)] = _0;
+    table[index2(_0, _1)] = _T;
+    table[index2(_0, _T)] = _1;
+    table[index2(_1, _0)] = _1;
+    table[index2(_1, _1)] = _0;
+    table[index2(_1, _T)] = _1;
+    table[index2(_T, _0)] = _T;
+    table[index2(_T, _1)] = _T;
+    table[index2(_T, _T)] = _0;
 
     table
 };
 
-pub const TRIT2_TO_PRODUCT: [u8; 16] = {
-    let mut table = [u8::MAX; 16];
+pub const TRIT2_TO_OR: [Trit; TRIT2_TABLE_SIZE] = {
+    let mut table = [_INVALID; TRIT2_TABLE_SIZE];
 
-    table[0b00_00] = 0b00;
-    table[0b00_01] = 0b00;
-    table[0b00_11] = 0b00;
-    table[0b01_00] = 0b00;
-    table[0b01_01] = 0b01;
-    table[0b01_11] = 0b11;
-    table[0b11_00] = 0b00;
-    table[0b11_01] = 0b11;
-    table[0b11_11] = 0b01;
-
-    table
-};
-
-pub const TRIT3_TO_SUM_AND_CARRY: [(u8, u8); 64] = {
-    let mut table = [(u8::MAX, u8::MAX); 64];
-
-    table[0b00_00_00] = (0b00, 0b00);
-    table[0b00_00_01] = (0b01, 0b00);
-    table[0b00_00_11] = (0b11, 0b00);
-    table[0b00_01_00] = (0b01, 0b00);
-    table[0b00_01_01] = (0b11, 0b01);
-    table[0b00_01_11] = (0b00, 0b00);
-    table[0b00_11_00] = (0b11, 0b00);
-    table[0b00_11_01] = (0b00, 0b00);
-    table[0b00_11_11] = (0b01, 0b11);
-    table[0b01_00_00] = (0b01, 0b00);
-    table[0b01_00_01] = (0b11, 0b01);
-    table[0b01_00_11] = (0b00, 0b00);
-    table[0b01_01_00] = (0b11, 0b01);
-    table[0b01_01_01] = (0b00, 0b01);
-    table[0b01_01_11] = (0b01, 0b00);
-    table[0b01_11_00] = (0b00, 0b00);
-    table[0b01_11_01] = (0b01, 0b00);
-    table[0b01_11_11] = (0b11, 0b00);
-    table[0b11_00_00] = (0b11, 0b00);
-    table[0b11_00_01] = (0b00, 0b00);
-    table[0b11_00_11] = (0b01, 0b11);
-    table[0b11_01_00] = (0b00, 0b00);
-    table[0b11_01_01] = (0b01, 0b00);
-    table[0b11_01_11] = (0b11, 0b00);
-    table[0b11_11_00] = (0b01, 0b11);
-    table[0b11_11_01] = (0b11, 0b00);
-    table[0b11_11_11] = (0b00, 0b11);
+    table[index2(_0, _0)] = _0;
+    table[index2(_0, _1)] = _1;
+    table[index2(_0, _T)] = _0;
+    table[index2(_1, _0)] = _1;
+    table[index2(_1, _1)] = _1;
+    table[index2(_1, _T)] = _1;
+    table[index2(_T, _0)] = _0;
+    table[index2(_T, _1)] = _1;
+    table[index2(_T, _T)] = _T;
 
     table
 };
 
-pub const TRIT4_TO_I8: [i8; 256] = {
-    let mut table = [i8::MAX; 256];
+pub const TRIT2_TO_PRODUCT: [Trit; TRIT2_TABLE_SIZE] = {
+    let mut table = [_INVALID; TRIT2_TABLE_SIZE];
 
-    table[0b11_11_00_01] = -35;
-    table[0b11_11_01_11] = -34;
-    table[0b11_11_01_00] = -33;
-    table[0b11_11_01_01] = -32;
-    table[0b11_00_11_11] = -31;
-    table[0b11_00_11_00] = -30;
-    table[0b11_00_11_01] = -29;
-    table[0b11_00_00_11] = -28;
-    table[0b11_00_00_00] = -27;
-    table[0b11_00_00_01] = -26;
-    table[0b11_00_01_11] = -25;
-    table[0b11_00_01_00] = -24;
-    table[0b11_00_01_01] = -23;
-    table[0b11_01_11_11] = -22;
-    table[0b11_01_11_00] = -21;
-    table[0b11_01_11_01] = -20;
-    table[0b11_01_00_11] = -19;
-    table[0b11_01_00_00] = -18;
-    table[0b11_01_00_01] = -17;
-    table[0b11_01_01_11] = -16;
-    table[0b11_01_01_00] = -15;
-    table[0b11_01_01_01] = -14;
-    table[0b00_11_11_11] = -13;
-    table[0b00_11_11_00] = -12;
-    table[0b00_11_11_01] = -11;
-    table[0b00_11_00_11] = -10;
-    table[0b00_11_00_00] = -9;
-    table[0b00_11_00_01] = -8;
-    table[0b00_11_01_11] = -7;
-    table[0b00_11_01_00] = -6;
-    table[0b00_11_01_01] = -5;
-    table[0b00_00_11_11] = -4;
-    table[0b00_00_11_00] = -3;
-    table[0b00_00_11_01] = -2;
-    table[0b00_00_00_11] = -1;
-    table[0b00_00_00_00] = 0;
-    table[0b00_00_00_01] = 1;
-    table[0b00_00_01_11] = 2;
-    table[0b00_00_01_00] = 3;
-    table[0b00_00_01_01] = 4;
-    table[0b00_01_11_11] = 5;
-    table[0b00_01_11_00] = 6;
-    table[0b00_01_11_01] = 7;
-    table[0b00_01_00_11] = 8;
-    table[0b00_01_00_00] = 9;
-    table[0b00_01_00_01] = 10;
-    table[0b00_01_01_11] = 11;
-    table[0b00_01_01_00] = 12;
-    table[0b00_01_01_01] = 13;
-    table[0b01_11_11_11] = 14;
-    table[0b01_11_11_00] = 15;
-    table[0b01_11_11_01] = 16;
-    table[0b01_11_00_11] = 17;
-    table[0b01_11_00_00] = 18;
-    table[0b01_11_00_01] = 19;
-    table[0b01_11_01_11] = 20;
-    table[0b01_11_01_00] = 21;
-    table[0b01_11_01_01] = 22;
-    table[0b01_00_11_11] = 23;
-    table[0b01_00_11_00] = 24;
-    table[0b01_00_11_01] = 25;
-    table[0b01_00_00_11] = 26;
-    table[0b01_00_00_00] = 27;
-    table[0b01_00_00_01] = 28;
-    table[0b01_00_01_11] = 29;
-    table[0b01_00_01_00] = 30;
-    table[0b01_00_01_01] = 31;
-    table[0b01_01_11_11] = 32;
-    table[0b01_01_11_00] = 33;
-    table[0b01_01_11_01] = 34;
-    table[0b01_01_00_11] = 35;
+    table[index2(_0, _0)] = _0;
+    table[index2(_0, _1)] = _0;
+    table[index2(_0, _T)] = _0;
+    table[index2(_1, _0)] = _0;
+    table[index2(_1, _1)] = _1;
+    table[index2(_1, _T)] = _T;
+    table[index2(_T, _0)] = _0;
+    table[index2(_T, _1)] = _T;
+    table[index2(_T, _T)] = _1;
 
     table
 };
 
-pub const I8_TO_TRIT4: [i8; 36] = [
-    0b00_00_00_00,
-    0b00_00_00_01,
-    0b00_00_01_11,
-    0b00_00_01_00,
-    0b00_00_01_01,
-    0b00_01_11_11,
-    0b00_01_11_00,
-    0b00_01_11_01,
-    0b00_01_00_11,
-    0b00_01_00_00,
-    0b00_01_00_01,
-    0b00_01_01_11,
-    0b00_01_01_00,
-    0b00_01_01_01,
-    0b01_11_11_11,
-    0b01_11_11_00,
-    0b01_11_11_01,
-    0b01_11_00_11,
-    0b01_11_00_00,
-    0b01_11_00_01,
-    0b01_11_01_11,
-    0b01_11_01_00,
-    0b01_11_01_01,
-    0b01_00_11_11,
-    0b01_00_11_00,
-    0b01_00_11_01,
-    0b01_00_00_11,
-    0b01_00_00_00,
-    0b01_00_00_01,
-    0b01_00_01_11,
-    0b01_00_01_00,
-    0b01_00_01_01,
-    0b01_01_11_11,
-    0b01_01_11_00,
-    0b01_01_11_01,
-    0b01_01_00_11,
-];
+pub const TRIT3_TO_SUM_AND_CARRY: [(Trit, Trit); TRIT3_TABLE_SIZE] = {
+    let mut table = [(_INVALID, _INVALID); TRIT3_TABLE_SIZE];
+
+    table[index3(_0, _0, _0)] = (_0, _0);
+    table[index3(_0, _0, _1)] = (_1, _0);
+    table[index3(_0, _0, _T)] = (_T, _0);
+    table[index3(_0, _1, _0)] = (_1, _0);
+    table[index3(_0, _1, _1)] = (_T, _1);
+    table[index3(_0, _1, _T)] = (_0, _0);
+    table[index3(_0, _T, _0)] = (_T, _0);
+    table[index3(_0, _T, _1)] = (_0, _0);
+    table[index3(_0, _T, _T)] = (_1, _T);
+    table[index3(_1, _0, _0)] = (_1, _0);
+    table[index3(_1, _0, _1)] = (_T, _1);
+    table[index3(_1, _0, _T)] = (_0, _0);
+    table[index3(_1, _1, _0)] = (_T, _1);
+    table[index3(_1, _1, _1)] = (_0, _1);
+    table[index3(_1, _1, _T)] = (_1, _0);
+    table[index3(_1, _T, _0)] = (_0, _0);
+    table[index3(_1, _T, _1)] = (_1, _0);
+    table[index3(_1, _T, _T)] = (_T, _0);
+    table[index3(_T, _0, _0)] = (_T, _0);
+    table[index3(_T, _0, _1)] = (_0, _0);
+    table[index3(_T, _0, _T)] = (_1, _T);
+    table[index3(_T, _1, _0)] = (_0, _0);
+    table[index3(_T, _1, _1)] = (_1, _0);
+    table[index3(_T, _1, _T)] = (_T, _0);
+    table[index3(_T, _T, _0)] = (_1, _T);
+    table[index3(_T, _T, _1)] = (_T, _0);
+    table[index3(_T, _T, _T)] = (_0, _T);
+
+    table
+};
+
+pub const TRIT4_TO_I8: [i8; TRIT4_TABLE_SIZE] = {
+    let mut table = [i8::MAX; TRIT4_TABLE_SIZE];
+
+    table[index4(_T, _T, _0, _1)] = -35;
+    table[index4(_T, _T, _1, _T)] = -34;
+    table[index4(_T, _T, _1, _0)] = -33;
+    table[index4(_T, _T, _1, _1)] = -32;
+    table[index4(_T, _0, _T, _T)] = -31;
+    table[index4(_T, _0, _T, _0)] = -30;
+    table[index4(_T, _0, _T, _1)] = -29;
+    table[index4(_T, _0, _0, _T)] = -28;
+    table[index4(_T, _0, _0, _0)] = -27;
+    table[index4(_T, _0, _0, _1)] = -26;
+    table[index4(_T, _0, _1, _T)] = -25;
+    table[index4(_T, _0, _1, _0)] = -24;
+    table[index4(_T, _0, _1, _1)] = -23;
+    table[index4(_T, _1, _T, _T)] = -22;
+    table[index4(_T, _1, _T, _0)] = -21;
+    table[index4(_T, _1, _T, _1)] = -20;
+    table[index4(_T, _1, _0, _T)] = -19;
+    table[index4(_T, _1, _0, _0)] = -18;
+    table[index4(_T, _1, _0, _1)] = -17;
+    table[index4(_T, _1, _1, _T)] = -16;
+    table[index4(_T, _1, _1, _0)] = -15;
+    table[index4(_T, _1, _1, _1)] = -14;
+    table[index4(_0, _T, _T, _T)] = -13;
+    table[index4(_0, _T, _T, _0)] = -12;
+    table[index4(_0, _T, _T, _1)] = -11;
+    table[index4(_0, _T, _0, _T)] = -10;
+    table[index4(_0, _T, _0, _0)] = -9;
+    table[index4(_0, _T, _0, _1)] = -8;
+    table[index4(_0, _T, _1, _T)] = -7;
+    table[index4(_0, _T, _1, _0)] = -6;
+    table[index4(_0, _T, _1, _1)] = -5;
+    table[index4(_0, _0, _T, _T)] = -4;
+    table[index4(_0, _0, _T, _0)] = -3;
+    table[index4(_0, _0, _T, _1)] = -2;
+    table[index4(_0, _0, _0, _T)] = -1;
+    table[index4(_0, _0, _0, _0)] = 0;
+    table[index4(_0, _0, _0, _1)] = 1;
+    table[index4(_0, _0, _1, _T)] = 2;
+    table[index4(_0, _0, _1, _0)] = 3;
+    table[index4(_0, _0, _1, _1)] = 4;
+    table[index4(_0, _1, _T, _T)] = 5;
+    table[index4(_0, _1, _T, _0)] = 6;
+    table[index4(_0, _1, _T, _1)] = 7;
+    table[index4(_0, _1, _0, _T)] = 8;
+    table[index4(_0, _1, _0, _0)] = 9;
+    table[index4(_0, _1, _0, _1)] = 10;
+    table[index4(_0, _1, _1, _T)] = 11;
+    table[index4(_0, _1, _1, _0)] = 12;
+    table[index4(_0, _1, _1, _1)] = 13;
+    table[index4(_1, _T, _T, _T)] = 14;
+    table[index4(_1, _T, _T, _0)] = 15;
+    table[index4(_1, _T, _T, _1)] = 16;
+    table[index4(_1, _T, _0, _T)] = 17;
+    table[index4(_1, _T, _0, _0)] = 18;
+    table[index4(_1, _T, _0, _1)] = 19;
+    table[index4(_1, _T, _1, _T)] = 20;
+    table[index4(_1, _T, _1, _0)] = 21;
+    table[index4(_1, _T, _1, _1)] = 22;
+    table[index4(_1, _0, _T, _T)] = 23;
+    table[index4(_1, _0, _T, _0)] = 24;
+    table[index4(_1, _0, _T, _1)] = 25;
+    table[index4(_1, _0, _0, _T)] = 26;
+    table[index4(_1, _0, _0, _0)] = 27;
+    table[index4(_1, _0, _0, _1)] = 28;
+    table[index4(_1, _0, _1, _T)] = 29;
+    table[index4(_1, _0, _1, _0)] = 30;
+    table[index4(_1, _0, _1, _1)] = 31;
+    table[index4(_1, _1, _T, _T)] = 32;
+    table[index4(_1, _1, _T, _0)] = 33;
+    table[index4(_1, _1, _T, _1)] = 34;
+    table[index4(_1, _1, _0, _T)] = 35;
+
+    table
+};

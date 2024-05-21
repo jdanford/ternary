@@ -1,36 +1,44 @@
-use crate::error::{Error, Result};
-use crate::trit::{BIN_INVALID, CHAR_INVALID};
+use crate::{
+    error::{Error, Result},
+    trit::{index3, BIN_INVALID, CHAR_INVALID, _0, _1, _T},
+    Trit, Tryte,
+};
+
+#[allow(clippy::cast_possible_truncation)]
+const fn hyte(t2: Trit, t1: Trit, t0: Trit) -> u8 {
+    Tryte::from_trits(_0, _0, _0, t2, t1, t0).low_hyte()
+}
 
 const CHAR_TO_HYTE: [u8; 256] = {
     let mut table = [BIN_INVALID; 256];
 
-    table['m' as usize] = 0b11_11_11;
-    table['l' as usize] = 0b11_11_00;
-    table['k' as usize] = 0b11_11_01;
-    table['j' as usize] = 0b11_00_11;
-    table['i' as usize] = 0b11_00_00;
-    table['h' as usize] = 0b11_00_01;
-    table['g' as usize] = 0b11_01_11;
-    table['f' as usize] = 0b11_01_00;
-    table['e' as usize] = 0b11_01_01;
-    table['d' as usize] = 0b00_11_11;
-    table['c' as usize] = 0b00_11_00;
-    table['b' as usize] = 0b00_11_01;
-    table['a' as usize] = 0b00_00_11;
-    table['0' as usize] = 0b00_00_00;
-    table['A' as usize] = 0b00_00_01;
-    table['B' as usize] = 0b00_01_11;
-    table['C' as usize] = 0b00_01_00;
-    table['D' as usize] = 0b00_01_01;
-    table['E' as usize] = 0b01_11_11;
-    table['F' as usize] = 0b01_11_00;
-    table['G' as usize] = 0b01_11_01;
-    table['H' as usize] = 0b01_00_11;
-    table['I' as usize] = 0b01_00_00;
-    table['J' as usize] = 0b01_00_01;
-    table['K' as usize] = 0b01_01_11;
-    table['L' as usize] = 0b01_01_00;
-    table['M' as usize] = 0b01_01_01;
+    table['m' as usize] = hyte(_T, _T, _T);
+    table['l' as usize] = hyte(_T, _T, _0);
+    table['k' as usize] = hyte(_T, _T, _1);
+    table['j' as usize] = hyte(_T, _0, _T);
+    table['i' as usize] = hyte(_T, _0, _0);
+    table['h' as usize] = hyte(_T, _0, _1);
+    table['g' as usize] = hyte(_T, _1, _T);
+    table['f' as usize] = hyte(_T, _1, _0);
+    table['e' as usize] = hyte(_T, _1, _1);
+    table['d' as usize] = hyte(_0, _T, _T);
+    table['c' as usize] = hyte(_0, _T, _0);
+    table['b' as usize] = hyte(_0, _T, _1);
+    table['a' as usize] = hyte(_0, _0, _T);
+    table['0' as usize] = hyte(_0, _0, _0);
+    table['A' as usize] = hyte(_0, _0, _1);
+    table['B' as usize] = hyte(_0, _1, _T);
+    table['C' as usize] = hyte(_0, _1, _0);
+    table['D' as usize] = hyte(_0, _1, _1);
+    table['E' as usize] = hyte(_1, _T, _T);
+    table['F' as usize] = hyte(_1, _T, _0);
+    table['G' as usize] = hyte(_1, _T, _1);
+    table['H' as usize] = hyte(_1, _0, _T);
+    table['I' as usize] = hyte(_1, _0, _0);
+    table['J' as usize] = hyte(_1, _0, _1);
+    table['K' as usize] = hyte(_1, _1, _T);
+    table['L' as usize] = hyte(_1, _1, _0);
+    table['M' as usize] = hyte(_1, _1, _1);
 
     table
 };
@@ -47,33 +55,33 @@ pub const fn try_from_char(c: char) -> Result<u8> {
 const HYTE_TO_CHAR: [char; 64] = {
     let mut table = [CHAR_INVALID; 64];
 
-    table[0b11_11_11] = 'm';
-    table[0b11_11_00] = 'l';
-    table[0b11_11_01] = 'k';
-    table[0b11_00_11] = 'j';
-    table[0b11_00_00] = 'i';
-    table[0b11_00_01] = 'h';
-    table[0b11_01_11] = 'g';
-    table[0b11_01_00] = 'f';
-    table[0b11_01_01] = 'e';
-    table[0b00_11_11] = 'd';
-    table[0b00_11_00] = 'c';
-    table[0b00_11_01] = 'b';
-    table[0b00_00_11] = 'a';
-    table[0b00_00_00] = '0';
-    table[0b00_00_01] = 'A';
-    table[0b00_01_11] = 'B';
-    table[0b00_01_00] = 'C';
-    table[0b00_01_01] = 'D';
-    table[0b01_11_11] = 'E';
-    table[0b01_11_00] = 'F';
-    table[0b01_11_01] = 'G';
-    table[0b01_00_11] = 'H';
-    table[0b01_00_00] = 'I';
-    table[0b01_00_01] = 'J';
-    table[0b01_01_11] = 'K';
-    table[0b01_01_00] = 'L';
-    table[0b01_01_01] = 'M';
+    table[index3(_T, _T, _T)] = 'm';
+    table[index3(_T, _T, _0)] = 'l';
+    table[index3(_T, _T, _1)] = 'k';
+    table[index3(_T, _0, _T)] = 'j';
+    table[index3(_T, _0, _0)] = 'i';
+    table[index3(_T, _0, _1)] = 'h';
+    table[index3(_T, _1, _T)] = 'g';
+    table[index3(_T, _1, _0)] = 'f';
+    table[index3(_T, _1, _1)] = 'e';
+    table[index3(_0, _T, _T)] = 'd';
+    table[index3(_0, _T, _0)] = 'c';
+    table[index3(_0, _T, _1)] = 'b';
+    table[index3(_0, _0, _T)] = 'a';
+    table[index3(_0, _0, _0)] = '0';
+    table[index3(_0, _0, _1)] = 'A';
+    table[index3(_0, _1, _T)] = 'B';
+    table[index3(_0, _1, _0)] = 'C';
+    table[index3(_0, _1, _1)] = 'D';
+    table[index3(_1, _T, _T)] = 'E';
+    table[index3(_1, _T, _0)] = 'F';
+    table[index3(_1, _T, _1)] = 'G';
+    table[index3(_1, _0, _T)] = 'H';
+    table[index3(_1, _0, _0)] = 'I';
+    table[index3(_1, _0, _1)] = 'J';
+    table[index3(_1, _1, _T)] = 'K';
+    table[index3(_1, _1, _0)] = 'L';
+    table[index3(_1, _1, _1)] = 'M';
 
     table
 };

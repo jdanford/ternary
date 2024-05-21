@@ -1,48 +1,19 @@
-use crate::error::{Error, Result};
-use crate::trit::Trit;
-use crate::tryte;
-use crate::tryte::Tryte;
-use crate::{trit, Ternary};
-
-impl Ternary for [Tryte] {
-    fn trit_len(&self) -> usize {
-        self.tryte_len() * tryte::TRIT_LEN
-    }
-
-    fn tryte_len(&self) -> usize {
-        self.len()
-    }
-
-    fn get_trit(&self, i: usize) -> Trit {
-        let (tryte_index, trit_index) = indices(i);
-        let tryte = self[tryte_index];
-        tryte.get_trit(trit_index)
-    }
-
-    fn set_trit(&mut self, i: usize, trit: Trit) {
-        let (tryte_index, trit_index) = indices(i);
-        let tryte = self[tryte_index];
-        self[tryte_index] = tryte.set_trit(trit_index, trit);
-    }
-
-    fn get_tryte(&self, i: usize) -> Tryte {
-        self[i]
-    }
-
-    fn set_tryte(&mut self, i: usize, tryte: Tryte) {
-        self[i] = tryte;
-    }
-}
+use crate::{
+    error::{assert_length, Result},
+    trit::{Trit, _0},
+    tryte::Tryte,
+    Ternary,
+};
 
 pub fn compare<T: Ternary + ?Sized>(lhs: &T, rhs: &T) -> Trit {
-    let mut cmp_trit = trit::ZERO;
+    let mut cmp_trit = _0;
 
     for i in (0..lhs.trit_len()).rev() {
         let a = lhs.get_trit(i);
         let b = rhs.get_trit(i);
         cmp_trit = a.tcmp(b);
 
-        if cmp_trit != trit::ZERO {
+        if cmp_trit != _0 {
             break;
         }
     }
@@ -72,9 +43,7 @@ pub fn tmul<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
 
 #[allow(dead_code)]
 fn read_trits<T: Ternary + ?Sized>(dest: &mut T, trits: &[Trit]) -> Result<()> {
-    if trits.len() != dest.trit_len() {
-        return Err(Error::InvalidLength(dest.trit_len(), trits.len()));
-    }
+    assert_length(trits.len(), dest.trit_len())?;
 
     for (i, &trit) in trits.iter().enumerate() {
         dest.set_trit(i, trit);
@@ -107,7 +76,7 @@ pub fn multiply<T: Ternary + ?Sized>(dest: &mut T, lhs: &T, rhs: &T) {
 }
 
 fn add_mul<T: Ternary + ?Sized>(dest: &mut T, src: &T, sign: Trit, offset: usize) -> Trit {
-    let mut carry = trit::ZERO;
+    let mut carry = _0;
 
     for i in 0..src.trit_len() {
         let a = dest.get_trit(i + offset);
@@ -120,31 +89,34 @@ fn add_mul<T: Ternary + ?Sized>(dest: &mut T, src: &T, sign: Trit, offset: usize
     carry
 }
 
-pub fn shift<T: Ternary + ?Sized>(dest: &mut T, src: &T, offset: isize) {
+#[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
+pub fn shift<T: Ternary + ?Sized>(dest: &mut T, src: &T, offset: isize) -> Result<()> {
     let src_len = src.trit_len();
-    let dest_len = src_len * 3;
+    let dest_len = dest.trit_len();
+    assert_length(dest_len, src_len * 3)?;
+
     let dest_offset = offset + src_len as isize;
-
     for i in 0..src_len {
-        let i_dest = i as isize + dest_offset;
-        if i_dest < 0 || dest_len as isize <= i_dest {
-            continue;
+        let j = i as isize + dest_offset;
+        if 0 <= j && j < dest_len as isize {
+            let trit = src.get_trit(i);
+            dest.set_trit(j as usize, trit);
         }
-
-        let trit = src.get_trit(i);
-        dest.set_trit(i_dest as usize, trit);
     }
+
+    Ok(())
 }
 
-#[allow(dead_code)]
-fn map_trits<T, F>(dest: &mut T, lhs: &T, f: F)
+fn zip_trits<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
 where
     T: Ternary + ?Sized,
-    F: Fn(Trit) -> Trit,
+    F: Fn(Trit, Trit) -> Trit,
 {
     for i in 0..lhs.trit_len() {
-        let trit = lhs.get_trit(i);
-        dest.set_trit(i, f(trit));
+        let a = lhs.get_trit(i);
+        let b = rhs.get_trit(i);
+        let c = f(a, b);
+        dest.set_trit(i, c);
     }
 }
 
@@ -159,110 +131,23 @@ where
     }
 }
 
-fn zip_trits<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
-where
-    T: Ternary + ?Sized,
-    F: Fn(Trit, Trit) -> Trit,
-{
-    for i in 0..rhs.trit_len() {
-        let a = lhs.get_trit(i);
-        let b = rhs.get_trit(i);
-        let c = f(a, b);
-        dest.set_trit(i, c);
-    }
-}
-
-#[allow(dead_code)]
-fn zip_trytes<T, F>(dest: &mut T, lhs: &T, rhs: &T, f: F)
-where
-    T: Ternary + ?Sized,
-    F: Fn(Tryte, Tryte) -> Tryte,
-{
-    for i in 0..rhs.tryte_len() {
-        let a = lhs.get_tryte(i);
-        let b = rhs.get_tryte(i);
-        let c = f(a, b);
-        dest.set_tryte(i, c);
-    }
-}
-
-#[allow(dead_code)]
-fn mutate_trits<T, F>(lhs: &mut T, f: F)
-where
-    T: Ternary + ?Sized,
-    F: Fn(Trit) -> Trit,
-{
-    for i in 0..lhs.trit_len() {
-        let trit = lhs.get_trit(i);
-        lhs.set_trit(i, f(trit));
-    }
-}
-
-#[allow(dead_code)]
-fn mutate_trytes<T, F>(lhs: &mut T, f: F)
-where
-    T: Ternary + ?Sized,
-    F: Fn(Tryte) -> Tryte,
-{
-    for i in 0..lhs.tryte_len() {
-        let tryte = lhs.get_tryte(i);
-        lhs.set_tryte(i, f(tryte));
-    }
-}
-
-#[allow(dead_code)]
-fn mutate2_trits<T, F>(lhs: &mut T, rhs: &T, f: F)
-where
-    T: Ternary + ?Sized,
-    F: Fn(Trit, Trit) -> Trit,
-{
-    for i in 0..rhs.trit_len() {
-        let a = lhs.get_trit(i);
-        let b = rhs.get_trit(i);
-        let c = f(a, b);
-        lhs.set_trit(i, c);
-    }
-}
-
-#[allow(dead_code)]
-fn mutate2_trytes<T, F>(lhs: &mut T, rhs: &T, f: F)
-where
-    T: Ternary + ?Sized,
-    F: Fn(Tryte, Tryte) -> Tryte,
-{
-    for i in 0..rhs.tryte_len() {
-        let a = lhs.get_tryte(i);
-        let b = rhs.get_tryte(i);
-        let c = f(a, b);
-        lhs.set_tryte(i, c);
-    }
-}
-
-const fn indices(i: usize) -> (usize, usize) {
-    let tryte_index = i / tryte::TRIT_LEN;
-    let trit_index = i % tryte::TRIT_LEN;
-    (tryte_index, trit_index)
-}
-
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
 
-    use crate::slice::{and, compare, multiply, negate, or, shift, tcmp, tmul};
-    use crate::test_constants::{
-        BYTES_0, BYTES_1, BYTES_MAX, BYTES_MIN, BYTES_NEG1, TRYTE12_0, TRYTE4_0, TRYTE4_1,
-        TRYTE4_16, TRYTE4_256, TRYTE4_4096, TRYTE4_512, TRYTE4_64, TRYTE4_8, TRYTE4_81, TRYTE4_9,
-        TRYTE4_MAX, TRYTE4_MIN, TRYTE4_NEG1, TRYTE4_NEG16, TRYTE4_NEG256, TRYTE4_NEG4096,
-        TRYTE4_NEG512, TRYTE4_NEG64, TRYTE4_NEG8, TRYTE4_NEG81, TRYTE4_NEG9, WORD_MAX, WORD_MIN,
+    use crate::{
+        ops::{and, compare, multiply, negate, or, shift, tcmp, tmul},
+        test_constants::*,
+        trit::{_0, _1, _T},
+        Result, Ternary, Tryte,
     };
-    use crate::{trit, Result, Ternary, Tryte};
 
     #[test]
     fn ternary_as_i64() {
         assert_eq!(WORD_MIN, TRYTE4_MIN.as_i64());
-        assert_eq!(-1_i64, TRYTE4_NEG1.as_i64());
-        assert_eq!(0_i64, TRYTE4_0.as_i64());
-        assert_eq!(1_i64, TRYTE4_1.as_i64());
+        assert_eq!(-1, TRYTE4_NEG1.as_i64());
+        assert_eq!(0, TRYTE4_0.as_i64());
+        assert_eq!(1, TRYTE4_1.as_i64());
         assert_eq!(WORD_MAX, TRYTE4_MAX.as_i64());
     }
 
@@ -385,15 +270,15 @@ mod tests {
 
     #[test]
     fn ternary_cmp() {
-        assert_eq!(trit::ZERO, compare(&TRYTE4_0[..], &TRYTE4_0[..]));
-        assert_eq!(trit::NEG, compare(&TRYTE4_0[..], &TRYTE4_MAX[..]));
-        assert_eq!(trit::POS, compare(&TRYTE4_0[..], &TRYTE4_MIN[..]));
-        assert_eq!(trit::POS, compare(&TRYTE4_MAX[..], &TRYTE4_0[..]));
-        assert_eq!(trit::POS, compare(&TRYTE4_MAX[..], &TRYTE4_MIN[..]));
-        assert_eq!(trit::ZERO, compare(&TRYTE4_MAX[..], &TRYTE4_MAX[..]));
-        assert_eq!(trit::NEG, compare(&TRYTE4_MIN[..], &TRYTE4_0[..]));
-        assert_eq!(trit::NEG, compare(&TRYTE4_MIN[..], &TRYTE4_MAX[..]));
-        assert_eq!(trit::ZERO, compare(&TRYTE4_MIN[..], &TRYTE4_MIN[..]));
+        assert_eq!(_0, compare(&TRYTE4_0[..], &TRYTE4_0[..]));
+        assert_eq!(_T, compare(&TRYTE4_0[..], &TRYTE4_MAX[..]));
+        assert_eq!(_1, compare(&TRYTE4_0[..], &TRYTE4_MIN[..]));
+        assert_eq!(_1, compare(&TRYTE4_MAX[..], &TRYTE4_0[..]));
+        assert_eq!(_1, compare(&TRYTE4_MAX[..], &TRYTE4_MIN[..]));
+        assert_eq!(_0, compare(&TRYTE4_MAX[..], &TRYTE4_MAX[..]));
+        assert_eq!(_T, compare(&TRYTE4_MIN[..], &TRYTE4_0[..]));
+        assert_eq!(_T, compare(&TRYTE4_MIN[..], &TRYTE4_MAX[..]));
+        assert_eq!(_0, compare(&TRYTE4_MIN[..], &TRYTE4_MIN[..]));
     }
 
     #[test]
@@ -557,7 +442,7 @@ mod tests {
     }
 
     fn tryte4_mul(trytes1: &[Tryte], trytes2: &[Tryte]) -> Vec<Tryte> {
-        with_cloned_trytes3(&TRYTE4_0, trytes1, trytes2, multiply)
+        with_cloned_trytes3(&TRYTE8_0, trytes1, trytes2, multiply)[..4].to_vec()
     }
 
     #[test]
@@ -567,316 +452,367 @@ mod tests {
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000000000000000000000001T000110T001100T011000T",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -25)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -25).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000000000000000000000001T000110T001100T011000T1",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -24)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -24).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000000000000000000000001T000110T001100T011000T10",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -23)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -23).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000000000000000000001T000110T001100T011000T100",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -22)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -22).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000000000000000000001T000110T001100T011000T1000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -21)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -21).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000000000000000000001T000110T001100T011000T10000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -20)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -20).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000000000000000001T000110T001100T011000T100000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -19)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -19).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000000000000000001T000110T001100T011000T1000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -18)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -18).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000000000000000001T000110T001100T011000T10000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -17)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -17).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000000000000001T000110T001100T011000T100000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -16)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -16).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000000000000001T000110T001100T011000T1000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -15)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -15).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000000000000001T000110T001100T011000T10000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -14)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -14).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000000000001T000110T001100T011000T100000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -13)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -13).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000000000001T000110T001100T011000T1000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -12)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -12).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000000000001T000110T001100T011000T10000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -11)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -11).unwrap()
         );
 
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000000001T000110T001100T011000T100000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -10)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -10).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000000001T000110T001100T011000T1000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -9)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -9).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000000001T000110T001100T011000T10000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -8)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -8).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000000001T000110T001100T011000T100000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -7)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -7).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000000001T000110T001100T011000T1000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -6)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -6).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000000001T000110T001100T011000T10000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -5)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -5).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000000001T000110T001100T011000T100000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -4)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -4).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000000001T000110T001100T011000T1000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -3)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -3).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000000001T000110T001100T011000T10000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -2)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -2).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000000001T000110T001100T011000T100000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", -1)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", -1).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000000001T000110T001100T011000T1000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 0)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 0).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000000001T000110T001100T011000T10000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 1)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 1).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000000001T000110T001100T011000T100000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 2)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 2).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000000001T000110T001100T011000T1000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 3)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 3).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000000001T000110T001100T011000T10000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 4)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 4).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000000001T000110T001100T011000T100000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 5)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 5).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000000001T000110T001100T011000T1000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 6)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 6).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000000001T000110T001100T011000T10000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 7)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 7).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000000001T000110T001100T011000T100000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 8)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 8).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000000001T000110T001100T011000T1000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 9)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 9).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000000001T000110T001100T011000T10000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 10)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 10).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000000001T000110T001100T011000T100000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 11)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 11).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000000001T000110T001100T011000T1000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 12)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 12).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000000001T000110T001100T011000T10000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 13)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 13).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000000001T000110T001100T011000T100000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 14)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 14).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000000001T000110T001100T011000T1000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 15)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 15).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000000001T000110T001100T011000T10000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 16)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 16).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00000001T000110T001100T011000T100000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 17)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 17).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0000001T000110T001100T011000T1000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 18)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 18).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "000001T000110T001100T011000T10000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 19)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 19).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "00001T000110T001100T011000T100000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 20)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 20).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "0001T000110T001100T011000T1000000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 21)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 21).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "001T000110T001100T011000T10000000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 22)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 22).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "01T000110T001100T011000T100000000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 23)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 23).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "1T000110T001100T011000T1000000000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 24)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 24).unwrap()
         );
         assert_eq!(
             tryte12_from_trit_str(
                 "T000110T001100T011000T10000000000000000000000000000000000000000000000000",
-            ),
-            tryte4_shift("1T000110T001100T011000T1", 25)
+            )
+            .unwrap(),
+            tryte4_shift("1T000110T001100T011000T1", 25).unwrap()
         );
     }
 
     fn tryte4_shift(trit_str: &str, offset: isize) -> Result<Vec<Tryte>> {
         let trytes = tryte4_from_trit_str(trit_str)?;
         try_with_cloned_trytes2(&TRYTE12_0, &trytes[..], |dest, src| {
-            shift(dest, src, offset);
+            shift(dest, src, offset)?;
             Ok(())
         })
     }
@@ -891,9 +827,9 @@ mod tests {
         vec
     }
 
-    fn with_cloned_trytes2<F>(trytes1: &[Tryte], trytes2: &[Tryte], mut f: F) -> Vec<Tryte>
+    fn with_cloned_trytes2<F>(trytes1: &[Tryte], trytes2: &[Tryte], f: F) -> Vec<Tryte>
     where
-        F: FnMut(&mut [Tryte], &[Tryte]),
+        F: Fn(&mut [Tryte], &[Tryte]),
     {
         let mut trytes1 = clone_slice(trytes1);
         f(&mut trytes1[..], trytes2);
@@ -904,32 +840,28 @@ mod tests {
         trytes1: &[Tryte],
         trytes2: &[Tryte],
         trytes3: &[Tryte],
-        mut f: F,
+        f: F,
     ) -> Vec<Tryte>
     where
-        F: FnMut(&mut [Tryte], &[Tryte], &[Tryte]),
+        F: Fn(&mut [Tryte], &[Tryte], &[Tryte]),
     {
         let mut trytes1 = clone_slice(trytes1);
         f(&mut trytes1[..], trytes2, trytes3);
         trytes1
     }
 
-    fn try_with_cloned_trytes<F>(trytes: &[Tryte], mut f: F) -> Result<Vec<Tryte>>
+    fn try_with_cloned_trytes<F>(trytes: &[Tryte], f: F) -> Result<Vec<Tryte>>
     where
-        F: FnMut(&mut [Tryte]) -> Result<()>,
+        F: Fn(&mut [Tryte]) -> Result<()>,
     {
         let mut trytes = clone_slice(trytes);
         f(&mut trytes[..])?;
         Ok(trytes)
     }
 
-    fn try_with_cloned_trytes2<F>(
-        trytes1: &[Tryte],
-        trytes2: &[Tryte],
-        mut f: F,
-    ) -> Result<Vec<Tryte>>
+    fn try_with_cloned_trytes2<F>(trytes1: &[Tryte], trytes2: &[Tryte], f: F) -> Result<Vec<Tryte>>
     where
-        F: FnMut(&mut [Tryte], &[Tryte]) -> Result<()>,
+        F: Fn(&mut [Tryte], &[Tryte]) -> Result<()>,
     {
         let mut trytes1 = clone_slice(trytes1);
         f(&mut trytes1[..], trytes2)?;
