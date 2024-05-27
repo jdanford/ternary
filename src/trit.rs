@@ -1,12 +1,9 @@
-use std::cmp::Ordering;
-use std::convert::TryFrom;
-use std::fmt;
-use std::ops;
+use std::{cmp::Ordering, convert::TryFrom, fmt, ops};
 
-use crate::Tryte;
 use crate::{
     error::{Error, Result},
     tables::{TRIT2_TO_AND, TRIT2_TO_CMP, TRIT2_TO_OR, TRIT2_TO_PRODUCT, TRIT3_TO_SUM_AND_CARRY},
+    Tryte,
 };
 
 pub const BITMASK: u8 = 0b11;
@@ -21,7 +18,7 @@ pub const CHAR_1: char = '1';
 pub const CHAR_INVALID: char = '?';
 pub const CHAR_T: char = 'T';
 
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct Trit(u8);
 
 pub const _0: Trit = Trit(BIN_0);
@@ -34,8 +31,14 @@ const U8_TO_TRIT: [Trit; 3] = [_T, _0, _1];
 const TRIT_TO_CHAR: [char; 4] = [CHAR_0, CHAR_1, CHAR_INVALID, CHAR_T];
 
 impl Trit {
-    pub const fn into_raw(self) -> u8 {
+    pub const BIT_SIZE: usize = 2;
+
+    pub(crate) const fn into_raw(self) -> u8 {
         self.0
+    }
+
+    pub(crate) const fn from_raw(bits: u8) -> Self {
+        Trit(bits)
     }
 
     pub const fn try_from_raw(bits: u8) -> Result<Self> {
@@ -44,15 +47,6 @@ impl Trit {
             BIN_0 => Ok(_0),
             BIN_1 => Ok(_1),
             _ => Err(Error::InvalidBitPattern(bits as u64)),
-        }
-    }
-
-    pub const fn from_raw(bits: u8) -> Self {
-        match bits {
-            BIN_T => _T,
-            BIN_0 => _0,
-            BIN_1 => _1,
-            _ => _INVALID,
         }
     }
 
@@ -70,7 +64,7 @@ impl Trit {
             let index = (n + 1) as usize;
             Ok(U8_TO_TRIT[index])
         } else {
-            Err(Error::IntegerOutOfBounds {
+            Err(Error::IntegerOutOfBoundsI64 {
                 min: -1,
                 max: 1,
                 value: n as i64,
@@ -144,15 +138,25 @@ impl Trit {
 }
 
 pub const fn index2(t1: Trit, t0: Trit) -> usize {
-    Tryte::from_trits(_0, _0, _0, _0, t1, t0).into_index()
+    Tryte::from_trits([t0, t1, _0, _0, _0, _0]).into_index()
 }
 
 pub const fn index3(t2: Trit, t1: Trit, t0: Trit) -> usize {
-    Tryte::from_trits(_0, _0, _0, t2, t1, t0).into_index()
+    Tryte::from_trits([t0, t1, t2, _0, _0, _0]).into_index()
 }
 
 pub const fn index4(t3: Trit, t2: Trit, t1: Trit, t0: Trit) -> usize {
-    Tryte::from_trits(_0, _0, t3, t2, t1, t0).into_index()
+    Tryte::from_trits([t0, t1, t2, t3, _0, _0]).into_index()
+}
+
+pub const fn index6(t5: Trit, t4: Trit, t3: Trit, t2: Trit, t1: Trit, t0: Trit) -> usize {
+    Tryte::from_trits([t0, t1, t2, t3, t4, t5]).into_index()
+}
+
+impl fmt::Display for Trit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.into_char())
+    }
 }
 
 impl From<Trit> for i8 {
@@ -255,25 +259,19 @@ impl ops::Mul for Trit {
     }
 }
 
-impl fmt::Debug for Trit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.into_char())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::trit::{Trit, _0, _1, _T};
 
     #[test]
-    fn trit_into_i8() {
+    fn into_i8() {
         assert_eq!(-1, i8::from(_T));
         assert_eq!(0, i8::from(_0));
         assert_eq!(1, i8::from(_1));
     }
 
     #[test]
-    fn trit_from_i8() {
+    fn try_from_i8() {
         assert_eq!(_T, Trit::try_from(-1).unwrap());
         assert_eq!(_0, Trit::try_from(0).unwrap());
         assert_eq!(_1, Trit::try_from(1).unwrap());
@@ -283,14 +281,14 @@ mod tests {
     }
 
     #[test]
-    fn trit_into_char() {
+    fn into_char() {
         assert_eq!('T', _T.into());
         assert_eq!('0', _0.into());
         assert_eq!('1', _1.into());
     }
 
     #[test]
-    fn trit_from_char() {
+    fn try_from_char() {
         assert_eq!(_T, Trit::try_from('T').unwrap());
         assert_eq!(_0, Trit::try_from('0').unwrap());
         assert_eq!(_1, Trit::try_from('1').unwrap());
@@ -301,21 +299,21 @@ mod tests {
     }
 
     #[test]
-    fn trit_negate() {
+    fn neg() {
         assert_eq!(_1, -_T);
         assert_eq!(_0, -_0);
         assert_eq!(_T, -_1);
     }
 
     #[test]
-    fn trit_not() {
+    fn not() {
         assert_eq!(_1, !_T);
         assert_eq!(_0, !_0);
         assert_eq!(_T, !_1);
     }
 
     #[test]
-    fn trit_and() {
+    fn and() {
         assert_eq!(_T, _T & _T);
         assert_eq!(_T, _T & _0);
         assert_eq!(_T, _T & _1);
@@ -328,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn trit_or() {
+    fn or() {
         assert_eq!(_T, _T | _T);
         assert_eq!(_0, _T | _0);
         assert_eq!(_1, _T | _1);
@@ -341,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    fn trit_add() {
+    fn add() {
         assert_eq!((_0, _T), _T.add_with_carry(_T, _T));
         assert_eq!((_1, _T), _T.add_with_carry(_T, _0));
         assert_eq!((_T, _0), _T.add_with_carry(_T, _1));
@@ -380,7 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn trit_mul() {
+    fn mul() {
         assert_eq!(_1, _T * _T);
         assert_eq!(_0, _T * _0);
         assert_eq!(_T, _T * _1);
@@ -393,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn trit_cmp() {
+    fn cmp() {
         assert!(_T == _T);
         assert!(_T < _0);
         assert!(_T < _1);

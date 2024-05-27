@@ -22,10 +22,10 @@ This library represents a trit as two bits using the following mapping:
 
 | Binary | Ternary   |
 | ------ | --------- |
-| 00     | 0         |
-| 01     | 1         |
-| 10     | _invalid_ |
-| 11     | T         |
+| `00`   | `0`       |
+| `01`   | `1`       |
+| `10`   | _invalid_ |
+| `11`   | `T`       |
 
 A trit holds log<sub>2</sub>3 ≈ 1.58 bits of information.
 
@@ -42,13 +42,13 @@ A tryte holds log<sub>2</sub>(3<sup>6</sup>) ≈ 9.51 bits of information.
 
 Due to the nature of the balanced ternary system, there is no need for separate signed/unsigned integer
 types. While this library performs all of its multi-tryte operations in little-endian fashion on tryte
-sequences of any size, the following types are standardized:
+sequences of any size, the following sizes are standardized:
 
-| Type       | Size |                Range                 |
-| ---------- | ---: | :----------------------------------: |
-| Tryte      |    6 |             [-364, +364]             |
-| Half(word) |   12 |         [-265,720, +265,720]         |
-| Word       |   24 | [-141,214,768,240, +141,214,768,240] |
+| Trytes | Trits | Alias |                Range                 |
+| -----: | ----: | :---- | :----------------------------------: |
+|      1 |     6 | `T6`  |             [-364, +364]             |
+|      2 |    12 | `T12` |         [-265,720, +265,720]         |
+|      4 |    24 | `T24` | [-141,214,768,240, +141,214,768,240] |
 
 ## Hytes
 
@@ -57,41 +57,41 @@ written as two hytes (i.e. half trytes) representing three trits each, using the
 
 | Hyte | Ternary | Decimal |
 | ---- | ------- | ------: |
-| m    | TTT     |     -13 |
-| l    | TT0     |     -12 |
-| k    | TT1     |     -11 |
-| j    | T0T     |     -10 |
-| i    | T00     |      -9 |
-| h    | T01     |      -8 |
-| g    | T1T     |      -7 |
-| f    | T10     |      -6 |
-| e    | T11     |      -5 |
-| d    | 0TT     |      -4 |
-| c    | 0T0     |      -3 |
-| b    | 0T1     |      -2 |
-| a    | 00T     |      -1 |
-| 0    | 000     |       0 |
-| A    | 001     |       1 |
-| B    | 01T     |       2 |
-| C    | 010     |       3 |
-| D    | 011     |       4 |
-| E    | 1TT     |       5 |
-| F    | 1T0     |       6 |
-| G    | 1T1     |       7 |
-| H    | 10T     |       8 |
-| I    | 100     |       9 |
-| J    | 101     |      10 |
-| K    | 11T     |      11 |
-| L    | 110     |      12 |
-| M    | 111     |      13 |
+| `m`  | `TTT`   |     -13 |
+| `l`  | `TT0`   |     -12 |
+| `k`  | `TT1`   |     -11 |
+| `j`  | `T0T`   |     -10 |
+| `i`  | `T00`   |      -9 |
+| `h`  | `T01`   |      -8 |
+| `g`  | `T1T`   |      -7 |
+| `f`  | `T10`   |      -6 |
+| `e`  | `T11`   |      -5 |
+| `d`  | `0TT`   |      -4 |
+| `c`  | `0T0`   |      -3 |
+| `b`  | `0T1`   |      -2 |
+| `a`  | `00T`   |      -1 |
+| `0`  | `000`   |       0 |
+| `A`  | `001`   |       1 |
+| `B`  | `01T`   |       2 |
+| `C`  | `010`   |       3 |
+| `D`  | `011`   |       4 |
+| `E`  | `1TT`   |       5 |
+| `F`  | `1T0`   |       6 |
+| `G`  | `1T1`   |       7 |
+| `H`  | `10T`   |       8 |
+| `I`  | `100`   |       9 |
+| `J`  | `101`   |      10 |
+| `K`  | `11T`   |      11 |
+| `L`  | `110`   |      12 |
+| `M`  | `111`   |      13 |
 
 ## UTF-6T
 
 This library implements Unicode text handling using UTF-6T, a ternary adaptation of UTF-8. Code points are
 encoded in one, two, or three trytes using the following patterns:
 
-| Code point type | Trytes               |
-| --------------- | -------------------- |
-| Single          | 0xxxxx               |
-| Double          | 1Txxxx Txxxxx        |
-| Triple          | 11xxxx Txxxxx Txxxxx |
+| Code point type | Trytes                     |
+| --------------- | -------------------------- |
+| Single          | `0xxxxx`                   |
+| Double          | `1Txxxx` `Txxxxx`          |
+| Triple          | `11xxxx` `Txxxxx` `Txxxxx` |

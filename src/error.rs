@@ -1,21 +1,30 @@
 use std::{io, num::TryFromIntError};
 
+use crate::Tryte;
+
 #[derive(Debug)]
 pub enum Error {
-    IntegerOutOfBounds { min: i64, max: i64, value: i64 },
+    IntegerOutOfBoundsI64 {
+        min: i64,
+        max: i64,
+        value: i64,
+    },
+    IntegerOutOfBounds {
+        min: String,
+        max: String,
+        value: String,
+    },
     InvalidBitPattern(u64),
     InvalidCharacter(char),
-    InvalidLength { actual: usize, expected: usize },
-    InvalidEncoding(String),
+    InvalidLength {
+        actual: usize,
+        expected: usize,
+    },
+    InvalidEncoding(Vec<Tryte>),
     InvalidString(String),
-    Io(io::Error),
     TryFromInt,
-}
-
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Self {
-        Error::Io(error)
-    }
+    TryIntoInt,
+    Io(io::Error),
 }
 
 impl From<TryFromIntError> for Error {
@@ -24,12 +33,26 @@ impl From<TryFromIntError> for Error {
     }
 }
 
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Self {
+        Error::Io(error)
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub const fn assert_length(actual: usize, expected: usize) -> Result<()> {
-    if expected != actual {
-        return Err(Error::InvalidLength { actual, expected });
+pub const fn assert_length_eq(actual: usize, expected: usize) -> Result<()> {
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(Error::InvalidLength { actual, expected })
     }
+}
 
-    Ok(())
+pub const fn assert_length_le(actual: usize, expected: usize) -> Result<()> {
+    if actual <= expected {
+        Ok(())
+    } else {
+        Err(Error::InvalidLength { actual, expected })
+    }
 }

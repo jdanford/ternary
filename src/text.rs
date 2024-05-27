@@ -1,11 +1,10 @@
 use std::char;
 
 use crate::{
-    constants::{TRIT_BIT_LEN, WORD_LEN},
-    core::Ternary,
     error::{Error, Result},
     trit::{self, _T},
     tryte::{self, Tryte},
+    TInt, Trit,
 };
 
 const SINGLE_RANGE: usize = 3usize.pow(5);
@@ -40,20 +39,25 @@ const TRIPLE_START_PATTERN: u16 = 0b01_01_00_00_00_00;
 const CONTINUATION_BITMASK: u16 = 0b00_11_11_11_11_11;
 const CONTINUATION_PATTERN: u16 = 0b11_00_00_00_00_00;
 
-pub fn encode_str(dest: &mut [Tryte], s: &str) -> Result<usize> {
-    let mut i = 0;
-    for c in s.chars() {
-        let slice = &mut dest[i..];
-        i += encode_char(slice, c)?;
-    }
-
-    Ok(i)
+fn tryte_is_continuation(tryte: Tryte) -> bool {
+    tryte.trit(5) == _T
 }
 
-pub fn decode_string(src: &[Tryte]) -> Result<(String, usize)> {
+pub fn encode_str(s: &str) -> Result<Vec<Tryte>> {
+    let mut dest = [Tryte::ZERO; 3];
+    let mut trytes = Vec::new();
+    for c in s.chars() {
+        let slice = encode_char(&mut dest[..], c)?;
+        trytes.extend_from_slice(slice);
+    }
+
+    Ok(trytes)
+}
+
+pub fn decode_string(src: &[Tryte]) -> Result<String> {
+    let len = src.len();
     let mut s = String::new();
     let mut i = 0;
-    let len = src.len();
     while i < len {
         let slice = &src[i..];
         let (c, count) = decode_char(slice)?;
@@ -61,10 +65,10 @@ pub fn decode_string(src: &[Tryte]) -> Result<(String, usize)> {
         i += count;
     }
 
-    Ok((s, i))
+    Ok(s)
 }
 
-pub fn encode_char(dest: &mut [Tryte], c: char) -> Result<usize> {
+pub fn encode_char(dest: &mut [Tryte], c: char) -> Result<&[Tryte]> {
     let codepoint = c as u32;
     let (len, codepoint_offset) = match codepoint as usize {
         SINGLE_MIN..=SINGLE_MAX => Ok((1, SINGLE_OFFSET)),
@@ -73,88 +77,80 @@ pub fn encode_char(dest: &mut [Tryte], c: char) -> Result<usize> {
         _ => Err(Error::InvalidCharacter(c)),
     }?;
 
-    let src = {
-        let mut tmp = [tryte::ZERO; WORD_LEN];
-        let shifted_codepoint = shift_codepoint(codepoint, codepoint_offset)?;
-        tmp.read_i64(i64::from(shifted_codepoint))?;
-        tmp
-    };
+    let shifted_codepoint = shift_codepoint(codepoint, codepoint_offset)?;
+    let src = TInt::<3>::try_from_int(shifted_codepoint)?.trytes;
 
     match len {
+        // 0xxxxx -> 0xxxxx
         1 => {
-            // 0xxxxx
             dest[0] = src[0];
         }
 
+        // yyxxxx 000yyy -> 1Txxxx Tyyyyy
         2 => {
-            let src0 = src[0];
-            let src1 = src[1];
-
             // yyxxxx
-            let (x0123, y01) = src0.split_trits_raw(4);
+            let (x0123, y01) = src[0].split_trits_raw(4);
 
             // 000yyy
-            let (y234, _) = src1.split_trits_raw(3);
+            let (y234, _) = src[1].split_trits_raw(3);
 
             // 1Txxxx
             let double_start_trits = DOUBLE_START_PATTERN | x0123;
             dest[0] = Tryte::from_raw(double_start_trits);
 
             // Tyyyyy
-            let continuation_trits = CONTINUATION_PATTERN | (y234 << (2 * TRIT_BIT_LEN)) | y01;
+            let continuation_trits = CONTINUATION_PATTERN | (y234 << (2 * Trit::BIT_SIZE)) | y01;
             dest[1] = Tryte::from_raw(continuation_trits);
         }
 
+        // yyxxxx zzzyyy 0000zz -> 11xxxx Tyyyyy Tzzzzz
         3 => {
-            let src0 = src[0];
-            let src1 = src[1];
-            let src2 = src[2];
-
             // yyxxxx
-            let (x0123, y01) = src0.split_trits_raw(4);
+            let (x0123, y01) = src[0].split_trits_raw(4);
 
             // zzzyyy
-            let (y234, z012) = src1.split_trits_raw(3);
+            let (y234, z012) = src[1].split_trits_raw(3);
 
             // 0000zz
-            let (z34, _) = src2.split_trits_raw(2);
+            let (z34, _) = src[2].split_trits_raw(2);
 
             // 11xxxx
             let triple_start_trits = TRIPLE_START_PATTERN | x0123;
             dest[0] = Tryte::from_raw(triple_start_trits);
 
             // Tyyyyy
-            let continuation1_trits = CONTINUATION_PATTERN | (y234 << (2 * TRIT_BIT_LEN)) | y01;
+            let continuation1_trits = CONTINUATION_PATTERN | (y234 << (2 * Trit::BIT_SIZE)) | y01;
             dest[1] = Tryte::from_raw(continuation1_trits);
 
             // Tzzzzz
-            let continuation2_trits = CONTINUATION_PATTERN | (z34 << (3 * TRIT_BIT_LEN)) | z012;
+            let continuation2_trits = CONTINUATION_PATTERN | (z34 << (3 * Trit::BIT_SIZE)) | z012;
             dest[2] = Tryte::from_raw(continuation2_trits);
         }
 
         _ => unreachable!(),
     }
 
-    Ok(len)
+    Ok(&dest[..len])
 }
 
 pub fn decode_char(src: &[Tryte]) -> Result<(char, usize)> {
-    let mut dest = [tryte::ZERO; 3];
+    let mut dest = [Tryte::ZERO; 3];
 
     let tryte0 = src[0];
-    let trit5 = tryte0.get_trit(5);
-    let trit4 = tryte0.get_trit(4);
+    let trit5 = tryte0.trit(5);
+    let trit4 = tryte0.trit(4);
     let (codepoint_offset, len) = match (trit5, trit4) {
+        // 0xxxxx -> 0xxxxx
         (trit::_0, _) => {
-            // 0xxxxx
-            dest[0] = src[0];
+            dest[0] = tryte0;
             Ok((SINGLE_OFFSET, 1))
         }
 
+        // 1Txxxx Tyyyyy -> yyxxxx 000yyy
         (trit::_1, trit::_T) => {
             let tryte1 = src[1];
-            if !is_continuation(tryte1) {
-                return Err(invalid_encoding(src));
+            if !tryte_is_continuation(tryte1) {
+                return Err(invalid_encoding(&src[..2]));
             }
 
             // 1Txxxx
@@ -164,24 +160,26 @@ pub fn decode_char(src: &[Tryte]) -> Result<(char, usize)> {
             let y01234 = tryte1.into_raw() & CONTINUATION_BITMASK;
 
             // yyxxxx
-            let dest0_trits = x0123 | (y01234 << (4 * TRIT_BIT_LEN) & tryte::BITMASK);
+            let dest0_trits = (y01234 << (4 * Trit::BIT_SIZE) & tryte::BITMASK) | x0123;
             dest[0] = Tryte::from_raw(dest0_trits);
 
             // 000yyy
-            let dest1_trits = y01234 >> (2 * TRIT_BIT_LEN);
+            let dest1_trits = y01234 >> (2 * Trit::BIT_SIZE);
             dest[1] = Tryte::from_raw(dest1_trits);
+
             Ok((DOUBLE_OFFSET, 2))
         }
 
+        // 11xxxx Tyyyyy Tzzzzz -> yyxxxx zzzyyy 0000zz
         (trit::_1, trit::_1) => {
             let tryte1 = src[1];
-            if !is_continuation(tryte1) {
-                return Err(invalid_encoding(src));
+            if !tryte_is_continuation(tryte1) {
+                return Err(invalid_encoding(&src[..2]));
             }
 
             let tryte2 = src[2];
-            if !is_continuation(tryte2) {
-                return Err(invalid_encoding(src));
+            if !tryte_is_continuation(tryte2) {
+                return Err(invalid_encoding(&src[..3]));
             }
 
             // 11xxxx
@@ -194,40 +192,34 @@ pub fn decode_char(src: &[Tryte]) -> Result<(char, usize)> {
             let z01234 = tryte2.into_raw() & CONTINUATION_BITMASK;
 
             // yyxxxx
-            let dest0_trits = (y01234 << (4 * TRIT_BIT_LEN) & tryte::BITMASK) | x0123;
+            let dest0_trits = (y01234 << (4 * Trit::BIT_SIZE) & tryte::BITMASK) | x0123;
             dest[0] = Tryte::from_raw(dest0_trits);
 
             // zzzyyy
             let dest1_trits =
-                (z01234 << (3 * TRIT_BIT_LEN) & tryte::BITMASK) | y01234 >> (2 * TRIT_BIT_LEN);
+                (z01234 << (3 * Trit::BIT_SIZE) & tryte::BITMASK) | y01234 >> (2 * Trit::BIT_SIZE);
             dest[1] = Tryte::from_raw(dest1_trits);
 
             // 0000zz
-            let dest2_trits = z01234 >> (3 * TRIT_BIT_LEN);
+            let dest2_trits = z01234 >> (3 * Trit::BIT_SIZE);
             dest[2] = Tryte::from_raw(dest2_trits);
 
             Ok((TRIPLE_OFFSET, 3))
         }
 
-        _ => Err(invalid_encoding(src)),
+        _ => Err(invalid_encoding(&src[..1])),
     }?;
 
+    let value = TInt::from_trytes(dest);
     #[allow(clippy::cast_possible_truncation)]
-    let shifted_codepoint = dest.as_i64() as i32;
+    let shifted_codepoint = value.into_i64() as i32;
     let codepoint = unshift_codepoint(shifted_codepoint, codepoint_offset)?;
     let c = char::from_u32(codepoint).ok_or_else(|| invalid_encoding(src))?;
     Ok((c, len))
 }
 
-pub fn is_continuation(tryte: Tryte) -> bool {
-    tryte.get_trit(5) == _T
-}
-
 fn invalid_encoding(src: &[Tryte]) -> Error {
-    let mut bytes = Vec::new();
-    src.write_trits(&mut bytes).unwrap();
-    let s = String::from_utf8_lossy(&bytes).into_owned();
-    Error::InvalidEncoding(s)
+    Error::InvalidEncoding(src.to_vec())
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
@@ -249,19 +241,11 @@ fn unshift_codepoint(shifted_codepoint: i32, offset: isize) -> Result<u32> {
 
 #[cfg(test)]
 mod tests {
-    use std::iter::repeat;
-
-    use crate::{
-        text::{decode_string, encode_str},
-        tryte,
-    };
+    use crate::text::{decode_string, encode_str};
 
     fn assert_roundtrip(s1: &str) {
-        let mut trytes = repeat(tryte::ZERO).take(s1.len()).collect::<Vec<_>>();
-        let len = encode_str(&mut trytes, s1).unwrap();
-        trytes.truncate(len);
-
-        let (s2, _) = decode_string(&trytes).unwrap();
+        let trytes = encode_str(s1).unwrap();
+        let s2 = decode_string(&trytes).unwrap();
         assert_eq!(s1, &s2[..]);
     }
 

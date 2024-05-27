@@ -1,16 +1,70 @@
 use crate::{
     error::{Error, Result},
-    trit::{index3, BIN_INVALID, CHAR_INVALID, _0, _1, _T},
-    Trit, Tryte,
+    trit::{index3, CHAR_INVALID, _0, _1, _INVALID, _T},
+    Trit,
 };
 
-#[allow(clippy::cast_possible_truncation)]
-const fn hyte(t2: Trit, t1: Trit, t0: Trit) -> u8 {
-    Tryte::from_trits(_0, _0, _0, t2, t1, t0).low_hyte()
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+pub struct Hyte(u8);
+
+impl Hyte {
+    pub const ZERO: Self = Hyte(0);
+
+    pub const TRIT_SIZE: usize = 3;
+    pub const BIT_SIZE: usize = Self::TRIT_SIZE * Trit::BIT_SIZE;
+    pub const BYTE_SIZE: usize = 1;
+
+    const INVALID: Self = Self::from_trits(_INVALID, _INVALID, _INVALID);
+
+    pub(crate) const fn into_raw(self) -> u8 {
+        self.0
+    }
+
+    pub(crate) const fn from_raw(bits: u8) -> Self {
+        Hyte(bits)
+    }
+
+    const fn from_trits(t2: Trit, t1: Trit, t0: Trit) -> Self {
+        let bits =
+            t2.into_raw() << (2 * Trit::BIT_SIZE) | t1.into_raw() << Trit::BIT_SIZE | t0.into_raw();
+        Hyte(bits)
+    }
+
+    pub const fn into_char(self) -> char {
+        let i = self.0 as usize;
+        HYTE_TO_CHAR[i]
+    }
+
+    pub const fn try_from_char(c: char) -> Result<Self> {
+        let hyte = CHAR_TO_HYTE[c as usize];
+        if hyte.0 == Hyte::INVALID.0 {
+            Err(Error::InvalidCharacter(c))
+        } else {
+            Ok(hyte)
+        }
+    }
 }
 
-const CHAR_TO_HYTE: [u8; 256] = {
-    let mut table = [BIN_INVALID; 256];
+impl TryFrom<char> for Hyte {
+    type Error = Error;
+
+    fn try_from(c: char) -> Result<Self> {
+        Hyte::try_from_char(c)
+    }
+}
+
+impl From<Hyte> for char {
+    fn from(hyte: Hyte) -> Self {
+        hyte.into_char()
+    }
+}
+
+const fn hyte(t2: Trit, t1: Trit, t0: Trit) -> Hyte {
+    Hyte::from_trits(t2, t1, t0)
+}
+
+const CHAR_TO_HYTE: [Hyte; 256] = {
+    let mut table = [Hyte::INVALID; 256];
 
     table['m' as usize] = hyte(_T, _T, _T);
     table['l' as usize] = hyte(_T, _T, _0);
@@ -42,15 +96,6 @@ const CHAR_TO_HYTE: [u8; 256] = {
 
     table
 };
-
-pub const fn try_from_char(c: char) -> Result<u8> {
-    let hyte = CHAR_TO_HYTE[c as usize];
-    if hyte == BIN_INVALID {
-        Err(Error::InvalidCharacter(c))
-    } else {
-        Ok(hyte)
-    }
-}
 
 const HYTE_TO_CHAR: [char; 64] = {
     let mut table = [CHAR_INVALID; 64];
@@ -85,8 +130,3 @@ const HYTE_TO_CHAR: [char; 64] = {
 
     table
 };
-
-pub const fn into_char(hyte: u8) -> char {
-    let i = hyte as usize;
-    HYTE_TO_CHAR[i]
-}

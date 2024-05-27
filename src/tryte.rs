@@ -1,64 +1,51 @@
-use std::{fmt, io, ops};
+use std::{fmt, io::Cursor, ops};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
-    constants::{HYTE_BIT_LEN, TRIT_BIT_LEN, TRYTE_TRIT_LEN},
-    error::{assert_length, Error, Result},
-    hyte,
-    trit::{self, Trit, _0},
+    error::{assert_length_eq, Error, Result},
+    hyte::Hyte,
+    tables::TRYTE_TO_I16,
+    trit::{self, Trit, _0, _1, _T},
 };
 
-pub use crate::constants::TRYTE_TRIT_LEN as TRIT_LEN;
-
 pub const BITMASK: u16 = 0b11_11_11_11_11_11;
-const HYTE_BITMASK: u8 = 0b11_11_11;
+pub const HYTE_BITMASK: u8 = 0b11_11_11;
 const SIGN_BITMASK: u16 = 0b10_10_10_10_10_10;
 
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct Tryte(u16);
-
-pub const ZERO: Tryte = Tryte::from_trit(_0);
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+pub struct Tryte(pub(crate) u16);
 
 impl Tryte {
-    pub const fn from_trit(trit: Trit) -> Self {
-        Tryte(trit.into_raw() as u16)
+    pub const TRIT_SIZE: usize = 6;
+    pub const BIT_SIZE: usize = Self::TRIT_SIZE * Trit::BIT_SIZE;
+    pub const BYTE_SIZE: usize = 2;
+
+    pub const ZERO: Tryte = Tryte::from_trit(_0);
+    pub const MIN: Tryte = Tryte::from_trits([_T, _T, _T, _T, _T, _T]);
+    pub const MAX: Tryte = Tryte::from_trits([_1, _1, _1, _1, _1, _1]);
+
+    pub(crate) const fn from_raw(bits: u16) -> Self {
+        Tryte(bits)
     }
 
-    pub const fn try_into_trit(self) -> Result<Trit> {
-        let bits = self.0;
-        if bits == trit::BIN_INVALID as u16 || bits > trit::BIN_T as u16 {
-            return Err(Error::InvalidBitPattern(bits as u64));
-        }
-
-        #[allow(clippy::cast_possible_truncation)]
-        Trit::try_from_raw(bits as u8)
-    }
-
-    pub const fn from_trits(t5: Trit, t4: Trit, t3: Trit, t2: Trit, t1: Trit, t0: Trit) -> Self {
-        let mut tryte = ZERO;
-        tryte = tryte.set_trit(5, t5);
-        tryte = tryte.set_trit(4, t4);
-        tryte = tryte.set_trit(3, t3);
-        tryte = tryte.set_trit(2, t2);
-        tryte = tryte.set_trit(1, t1);
-        tryte = tryte.set_trit(0, t0);
-        tryte
-    }
-
-    pub const fn into_raw(self) -> u16 {
+    pub(crate) const fn into_raw(self) -> u16 {
         self.0
     }
 
-    pub const fn try_from_raw(bits: u16) -> Result<Self> {
+    pub(crate) const fn try_from_raw(bits: u16) -> Result<Self> {
+        if bits >> Self::BIT_SIZE != 0 {
+            return Err(Error::InvalidBitPattern(bits as u64));
+        }
+
         let tryte = Tryte(bits);
 
         let mut i = 0;
-        while i < TRYTE_TRIT_LEN {
-            let trit = tryte.get_trit(i);
+        while i < Self::TRIT_SIZE {
+            let trit = tryte.trit(i);
             let trit_bits = trit.into_raw();
             if trit_bits == trit::BIN_INVALID {
-                return Err(Error::InvalidBitPattern(trit_bits as u64));
+                return Err(Error::InvalidBitPattern(bits as u64));
             }
 
             i += 1;
@@ -67,88 +54,145 @@ impl Tryte {
         Ok(tryte)
     }
 
-    pub const fn from_raw(bits: u16) -> Self {
-        Tryte(bits)
+    pub(crate) const fn into_index(self) -> usize {
+        self.0 as usize
     }
 
-    pub const fn split_trits_raw(self, n: usize) -> (u16, u16) {
-        let mask = (1 << (n * TRIT_BIT_LEN)) - 1;
-        let raw = self.into_raw();
-        let low = raw & mask;
-        let high = raw >> (n * TRIT_BIT_LEN);
-        (low, high)
+    pub const fn from_trit(trit: Trit) -> Self {
+        Tryte(trit.into_raw() as u16)
     }
 
-    pub const fn into_index(self) -> usize {
-        self.into_raw() as usize
+    pub const fn try_into_trit(self) -> Result<Trit> {
+        let bits = self.into_raw();
+        if bits == trit::BIN_INVALID as u16 || bits > trit::BIN_T as u16 {
+            return Err(Error::InvalidBitPattern(bits as u64));
+        }
+
+        #[allow(clippy::cast_possible_truncation)]
+        Ok(Trit::from_raw(bits as u8))
+    }
+
+    pub const fn from_trits(trits: [Trit; Self::TRIT_SIZE]) -> Self {
+        let mut i = Self::TRIT_SIZE - 1;
+        let mut bits = 0;
+
+        loop {
+            let trit = trits[i];
+            bits = (bits << Trit::BIT_SIZE) | trit.into_raw() as u16;
+
+            if i == 0 {
+                break;
+            }
+
+            i -= 1;
+        }
+
+        Tryte::from_raw(bits)
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    pub const fn get_trit(self, i: usize) -> Trit {
-        let shf = (i * TRIT_BIT_LEN) as u16;
-        let bits = ((self.0 >> shf) as u8) & trit::BITMASK;
+    pub const fn into_trits(self) -> [Trit; Self::TRIT_SIZE] {
+        let mut bits = self.into_raw();
+        let mut trits = [_0; Self::TRIT_SIZE];
+        let mut i = 0;
+
+        while i < Self::TRIT_SIZE {
+            trits[i] = Trit::from_raw(bits as u8 & trit::BITMASK);
+            bits >>= Trit::BIT_SIZE;
+            i += 1;
+        }
+
+        trits
+    }
+
+    const fn from_hytes(low_hyte: Hyte, high_hyte: Hyte) -> Self {
+        let bits = (high_hyte.into_raw() as u16) << Hyte::BIT_SIZE | (low_hyte.into_raw() as u16);
+        Tryte(bits)
+    }
+
+    pub const fn from_hyte(low_hyte: Hyte) -> Self {
+        Self::from_hytes(low_hyte, Hyte::ZERO)
+    }
+
+    pub const fn low_hyte(self) -> Hyte {
+        Self::hyte_from_raw(self.into_raw())
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    pub const fn high_hyte(self) -> Hyte {
+        Self::hyte_from_raw(self.into_raw() >> Hyte::BIT_SIZE as u16)
+    }
+
+    pub const fn hyte_from_raw(raw: u16) -> Hyte {
+        #[allow(clippy::cast_possible_truncation)]
+        let bits = raw as u8 & HYTE_BITMASK;
+        Hyte::from_raw(bits)
+    }
+
+    pub const fn into_hytes(self) -> (Hyte, Hyte) {
+        (self.low_hyte(), self.high_hyte())
+    }
+
+    pub fn try_into_hyte(self) -> Result<Hyte> {
+        let (lo, hi) = self.into_hytes();
+        if hi == Hyte::ZERO {
+            Ok(lo)
+        } else {
+            Err(Error::InvalidBitPattern(u64::from(self.into_raw())))
+        }
+    }
+
+    pub const fn split_trits_raw(self, n: usize) -> (u16, u16) {
+        let mask = (1 << (n * Trit::BIT_SIZE)) - 1;
+        let raw = self.into_raw();
+        let low = raw & mask;
+        let high = raw >> (n * Trit::BIT_SIZE);
+        (low, high)
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    pub const fn trit(self, i: usize) -> Trit {
+        let shf = (i * Trit::BIT_SIZE) as u16;
+        let bits = ((self.into_raw() >> shf) as u8) & trit::BITMASK;
         Trit::from_raw(bits)
     }
 
     #[allow(clippy::cast_possible_truncation)]
     pub const fn set_trit(self, i: usize, trit: Trit) -> Self {
-        let shf = (i * TRIT_BIT_LEN) as u16;
+        let shf = (i * Trit::BIT_SIZE) as u16;
         let zero_bits = !((trit::BITMASK as u16) << shf);
-        let tryte_bits = self.0 & zero_bits;
+        let tryte_bits = self.into_raw() & zero_bits;
         let trit_bits = (trit.into_raw() as u16) << shf;
-        let bits = tryte_bits | trit_bits;
-        Tryte(bits)
+        Tryte(tryte_bits | trit_bits)
     }
 
-    pub fn from_bytes<R: ReadBytesExt>(reader: &mut R) -> Result<Self> {
-        let bits = reader.read_u16::<LittleEndian>()?;
+    pub fn try_from_bytes(bytes: [u8; 2]) -> Result<Self> {
+        let bits = Cursor::new(bytes).read_u16::<LittleEndian>().unwrap();
         Tryte::try_from_raw(bits)
     }
 
-    pub fn write_bytes<W: WriteBytesExt>(self, writer: &mut W) -> Result<()> {
-        writer.write_u16::<LittleEndian>(self.into_raw())?;
-        Ok(())
+    pub fn into_bytes(self) -> [u8; 2] {
+        let mut bytes = vec![0; 2];
+        let mut cursor = Cursor::new(&mut bytes);
+        cursor.write_u16::<LittleEndian>(self.into_raw()).unwrap();
+        bytes.try_into().unwrap()
     }
 
-    const fn from_hytes(low_hyte: u8, high_hyte: u8) -> Self {
-        let bits = (high_hyte as u16) << HYTE_BIT_LEN | (low_hyte as u16);
-        Tryte(bits)
-    }
-
-    pub const fn low_hyte(self) -> u8 {
-        self.low_trit4() & HYTE_BITMASK
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    pub const fn high_hyte(self) -> u8 {
-        (self.0 >> HYTE_BIT_LEN) as u8 & HYTE_BITMASK
-    }
-
-    pub const fn hytes(self) -> (u8, u8) {
-        (self.low_hyte(), self.high_hyte())
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    pub const fn low_trit4(self) -> u8 {
-        self.0 as u8
+    pub const fn into_i16(self) -> i16 {
+        TRYTE_TO_I16[self.into_index()]
     }
 
     const fn negation_bits(self) -> u16 {
-        self.0 << 1 & SIGN_BITMASK
-    }
-
-    pub const fn neg(self) -> Self {
-        let bits = self.0 ^ self.negation_bits();
-        Tryte(bits)
+        self.into_raw() << 1 & SIGN_BITMASK
     }
 
     pub fn add_with_carry(self, rhs: Self, carry: Trit) -> (Self, Trit) {
-        let mut tryte = ZERO;
+        let mut tryte = Tryte::ZERO;
         let mut carry = carry;
 
-        for i in 0..TRYTE_TRIT_LEN {
-            let a = self.get_trit(i);
-            let b = rhs.get_trit(i);
+        for i in 0..Self::TRIT_SIZE {
+            let a = self.trit(i);
+            let b = rhs.trit(i);
             let (c, new_carry) = a.add_with_carry(b, carry);
             tryte = tryte.set_trit(i, c);
             carry = new_carry;
@@ -157,8 +201,39 @@ impl Tryte {
         (tryte, carry)
     }
 
+    pub fn and(self, rhs: Self) -> Self {
+        self.zip_trits(rhs, Trit::and)
+    }
+
+    pub fn or(self, rhs: Self) -> Self {
+        self.zip_trits(rhs, Trit::or)
+    }
+
+    pub fn tcmp(self, rhs: Self) -> Self {
+        self.zip_trits(rhs, Trit::tcmp)
+    }
+
+    pub fn tmul(self, rhs: Self) -> Self {
+        self.zip_trits(rhs, Trit::mul)
+    }
+
+    fn zip_trits<F>(self, rhs: Self, f: F) -> Self
+    where
+        F: Fn(Trit, Trit) -> Trit,
+    {
+        let mut dest = self;
+        for i in 0..Self::TRIT_SIZE {
+            let a = self.trit(i);
+            let b = rhs.trit(i);
+            let c = f(a, b);
+            dest = dest.set_trit(i, c);
+        }
+
+        dest
+    }
+
     pub fn from_hyte_str(s: &str) -> Result<Self> {
-        assert_length(s.len(), 2)?;
+        assert_length_eq(s.len(), 2)?;
 
         let mut chars = s.chars();
         let high_char = chars
@@ -167,16 +242,16 @@ impl Tryte {
         let low_char = chars
             .next()
             .ok_or_else(|| Error::InvalidString(s.to_owned()))?;
-        let high_hyte = hyte::try_from_char(high_char)?;
-        let low_hyte = hyte::try_from_char(low_char)?;
+        let high_hyte = Hyte::try_from(high_char)?;
+        let low_hyte = Hyte::try_from(low_char)?;
         let tryte = Self::from_hytes(low_hyte, high_hyte);
         Ok(tryte)
     }
 
-    pub fn write_hytes<W: io::Write>(self, writer: &mut W) -> Result<()> {
-        let (low_hyte, high_hyte) = self.hytes();
-        let low_char = hyte::into_char(low_hyte);
-        let high_char = hyte::into_char(high_hyte);
+    pub fn fmt_hytes<W: fmt::Write>(self, writer: &mut W) -> fmt::Result {
+        let (low_hyte, high_hyte) = self.into_hytes();
+        let low_char = low_hyte.into_char();
+        let high_char = high_hyte.into_char();
         write!(writer, "{high_char}{low_char}")?;
         Ok(())
     }
@@ -196,44 +271,51 @@ impl TryFrom<Tryte> for Trit {
     }
 }
 
+impl From<Hyte> for Tryte {
+    fn from(hyte: Hyte) -> Self {
+        Tryte::from_hyte(hyte)
+    }
+}
+
+impl TryFrom<Tryte> for Hyte {
+    type Error = Error;
+
+    fn try_from(tryte: Tryte) -> Result<Self> {
+        let (lo, hi) = tryte.into_hytes();
+        if hi == Hyte::ZERO {
+            Ok(lo)
+        } else {
+            Err(Error::InvalidBitPattern(u64::from(tryte.into_raw())))
+        }
+    }
+}
+
 impl ops::Neg for Tryte {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        self.neg()
-    }
-}
-
-impl fmt::Debug for Tryte {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for i in (0..TRYTE_TRIT_LEN).rev() {
-            let trit = self.get_trit(i);
-            write!(f, "{trit:?}")?;
-        }
-
-        Ok(())
+        let bits = self.into_raw() ^ self.negation_bits();
+        Tryte(bits)
     }
 }
 
 impl fmt::Display for Tryte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (low_hyte, high_hyte) = self.hytes();
-        let low_char = hyte::into_char(low_hyte);
-        let high_char = hyte::into_char(high_hyte);
+        let (low_hyte, high_hyte) = self.into_hytes();
+        let low_char = char::from(low_hyte);
+        let high_char = char::from(high_hyte);
         write!(f, "{high_char}{low_char}")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
-
     use crate::{
         test_constants::{
             TRYTE_0, TRYTE_1, TRYTE_64, TRYTE_MAX, TRYTE_MIN, TRYTE_NEG1, TRYTE_NEG64,
         },
         trit::{_0, _1, _T},
-        Result, Trit, Tryte,
+        Trit, Tryte,
     };
 
     #[test]
@@ -254,44 +336,48 @@ mod tests {
     }
 
     #[test]
-    fn tryte_from_bytes() {
-        assert_eq!(TRYTE_MIN, from_bytes(0b11_11_11_11, 0b00_00_11_11).unwrap());
+    fn tryte_try_from_bytes() {
+        assert_eq!(
+            TRYTE_MIN,
+            Tryte::try_from_bytes([0b11_11_11_11, 0b00_00_11_11]).unwrap()
+        );
         assert_eq!(
             TRYTE_NEG64,
-            from_bytes(0b01_11_00_11, 0b00_00_00_11).unwrap()
+            Tryte::try_from_bytes([0b01_11_00_11, 0b00_00_00_11]).unwrap()
         );
         assert_eq!(
             TRYTE_NEG1,
-            from_bytes(0b00_00_00_11, 0b00_00_00_00).unwrap()
+            Tryte::try_from_bytes([0b00_00_00_11, 0b00_00_00_00]).unwrap()
         );
-        assert_eq!(TRYTE_0, from_bytes(0b00_00_00_00, 0b00_00_00_00).unwrap());
-        assert_eq!(TRYTE_1, from_bytes(0b00_00_00_01, 0b00_00_00_00).unwrap());
-        assert_eq!(TRYTE_64, from_bytes(0b11_01_00_01, 0b00_00_00_01).unwrap());
-        assert_eq!(TRYTE_MAX, from_bytes(0b01_01_01_01, 0b00_00_01_01).unwrap());
+        assert_eq!(
+            TRYTE_0,
+            Tryte::try_from_bytes([0b00_00_00_00, 0b00_00_00_00]).unwrap()
+        );
+        assert_eq!(
+            TRYTE_1,
+            Tryte::try_from_bytes([0b00_00_00_01, 0b00_00_00_00]).unwrap()
+        );
+        assert_eq!(
+            TRYTE_64,
+            Tryte::try_from_bytes([0b11_01_00_01, 0b00_00_00_01]).unwrap()
+        );
+        assert_eq!(
+            TRYTE_MAX,
+            Tryte::try_from_bytes([0b01_01_01_01, 0b00_00_01_01]).unwrap()
+        );
 
-        assert!(from_bytes(0b01_01_10_01, 0b00_00_01_01).is_err());
-    }
-
-    fn from_bytes(low: u8, high: u8) -> Result<Tryte> {
-        let mut cursor = Cursor::new(vec![low, high]);
-        Tryte::from_bytes(&mut cursor)
+        assert!(Tryte::try_from_bytes([0b01_01_10_01, 0b00_00_01_01]).is_err());
     }
 
     #[test]
     fn tryte_write_bytes() {
-        assert_eq!(vec![0b11_11_11_11, 0b00_00_11_11], get_bytes(TRYTE_MIN));
-        assert_eq!(vec![0b01_11_00_11, 0b00_00_00_11], get_bytes(TRYTE_NEG64));
-        assert_eq!(vec![0b00_00_00_11, 0b00_00_00_00], get_bytes(TRYTE_NEG1));
-        assert_eq!(vec![0b00_00_00_00, 0b00_00_00_00], get_bytes(TRYTE_0));
-        assert_eq!(vec![0b00_00_00_01, 0b00_00_00_00], get_bytes(TRYTE_1));
-        assert_eq!(vec![0b11_01_00_01, 0b00_00_00_01], get_bytes(TRYTE_64));
-        assert_eq!(vec![0b01_01_01_01, 0b00_00_01_01], get_bytes(TRYTE_MAX));
-    }
-
-    fn get_bytes(tryte: Tryte) -> Vec<u8> {
-        let mut bytes = vec![];
-        tryte.write_bytes(&mut bytes).unwrap();
-        bytes
+        assert_eq!([0b11_11_11_11, 0b00_00_11_11], TRYTE_MIN.into_bytes());
+        assert_eq!([0b01_11_00_11, 0b00_00_00_11], TRYTE_NEG64.into_bytes());
+        assert_eq!([0b00_00_00_11, 0b00_00_00_00], TRYTE_NEG1.into_bytes());
+        assert_eq!([0b00_00_00_00, 0b00_00_00_00], TRYTE_0.into_bytes());
+        assert_eq!([0b00_00_00_01, 0b00_00_00_00], TRYTE_1.into_bytes());
+        assert_eq!([0b11_01_00_01, 0b00_00_00_01], TRYTE_64.into_bytes());
+        assert_eq!([0b01_01_01_01, 0b00_00_01_01], TRYTE_MAX.into_bytes());
     }
 
     #[test]

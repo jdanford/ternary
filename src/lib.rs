@@ -6,20 +6,18 @@
     clippy::return_self_not_must_use
 )]
 
-pub mod constants;
-mod core;
 pub mod error;
 mod hyte;
-pub mod ops;
-pub mod tables;
-pub mod test_constants;
+mod int;
+mod tables;
+mod test_constants;
 pub mod text;
 pub mod trit;
 pub mod tryte;
 
 pub use crate::{
-    core::Ternary,
     error::{Error, Result},
+    int::{TInt, T12, T24, T48, T6},
     trit::Trit,
     tryte::Tryte,
 };
