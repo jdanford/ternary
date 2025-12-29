@@ -351,58 +351,47 @@ impl<const N: usize> TInt<N> {
         if self.sign_trit() == _T { -self } else { self }
     }
 
-    fn div_rem_pos_slow(self, d: Self) -> (Self, Self) {
-        let n = self;
-
-        let mut q = Self::ZERO;
-        let mut r = n;
-
-        while r >= d {
-            q = q + Self::from_trit(_1);
-            r = r - d;
+    fn div_rem(self, d: Self) -> Option<(Self, Self)> {
+        if d == Self::ZERO {
+            return None;
         }
 
-        (q, r)
-    }
-
-    pub fn div_rem_checked(self, d: Self) -> Option<(Self, Self)> {
-        let n = self;
-        let n_sign = n.sign_trit();
-        let d_sign = d.sign_trit();
-
-        match (n_sign, d_sign) {
-            (_, trit::_0) => None,
-            (trit::_0, _) => Some((Self::ZERO, Self::ZERO)),
-            (trit::_1, trit::_1) => {
-                let (q, r) = n.div_rem_pos_slow(d);
-                Some((q, r))
-            }
-            (trit::_1, trit::_T) => {
-                let (q, r) = n.div_rem_pos_slow(-d);
-                Some((-q, r))
-            }
-            (trit::_T, trit::_1) => {
-                let (q, r) = (-n).div_rem_pos_slow(d);
-                if r == Self::ZERO {
-                    Some((-q, Self::ZERO))
-                } else {
-                    Some((-q - Self::from_trit(_1), d - r))
-                }
-            }
-            (trit::_T, trit::_T) => {
-                let (q, r) = (-n).div_rem_pos_slow(-d);
-                if r == Self::ZERO {
-                    Some((-q, Self::ZERO))
-                } else {
-                    Some((-q - Self::from_trit(_1), d - r))
-                }
-            }
-            (_, _) => unreachable!(),
+        if self == Self::ZERO {
+            return Some((Self::ZERO, Self::ZERO));
         }
-    }
 
-    pub fn div_rem(self, divisor: Self) -> (Self, Self) {
-        self.div_rem_checked(divisor).unwrap()
+        let (d, one) = if d < Self::ZERO {
+            (-d, Self::from_trit(_T))
+        } else {
+            (d, Self::from_trit(_1))
+        };
+
+        let mut r = Self::ZERO;
+        let mut q = self;
+
+        for _ in 0..Self::TRIT_SIZE {
+            let high_trit_index = Self::TRIT_SIZE - 1;
+            let q_high_trit = q.trit(high_trit_index);
+            r = r << 1;
+            q = q << 1;
+            r.set_trit(0, q_high_trit);
+
+            if r > Self::ZERO {
+                let lo = r - d;
+                if (-lo < r) || (-lo == r && q > Self::ZERO) {
+                    q = q + one;
+                    r = lo;
+                }
+            } else if r < Self::ZERO {
+                let hi = r + d;
+                if (-hi > r) || (-hi == r && q < Self::ZERO) {
+                    q = q - one;
+                    r = hi;
+                }
+            }
+        }
+
+        Some((q, r))
     }
 
     fn map_trytes<F>(self, f: F) -> Self
@@ -1021,28 +1010,28 @@ mod tests {
 
     #[test]
     fn div_rem() {
-        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(-364)));
-        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(-1)));
-        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(1)));
-        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(364)));
+        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(-364)));
+        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(-1)));
+        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(1)));
+        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(364)));
 
-        assert_eq!((t6(-1), t6(0)), t6(-7).div_rem(t6(7)));
-        assert_eq!((t6(-1), t6(1)), t6(-6).div_rem(t6(7)));
-        assert_eq!((t6(-1), t6(2)), t6(-5).div_rem(t6(7)));
-        assert_eq!((t6(-1), t6(3)), t6(-4).div_rem(t6(7)));
-        assert_eq!((t6(-1), t6(4)), t6(-3).div_rem(t6(7)));
-        assert_eq!((t6(-1), t6(5)), t6(-2).div_rem(t6(7)));
-        assert_eq!((t6(-1), t6(6)), t6(-1).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(1)), t6(1).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(2)), t6(2).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(3)), t6(3).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(4)), t6(4).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(5)), t6(5).div_rem(t6(7)));
-        assert_eq!((t6(0), t6(6)), t6(6).div_rem(t6(7)));
-        assert_eq!((t6(1), t6(0)), t6(7).div_rem(t6(7)));
+        assert_eq!(Some((t6(-1), t6(0))), t6(-7).div_rem(t6(7)));
+        assert_eq!(Some((t6(-1), t6(1))), t6(-6).div_rem(t6(7)));
+        assert_eq!(Some((t6(-1), t6(2))), t6(-5).div_rem(t6(7)));
+        assert_eq!(Some((t6(-1), t6(3))), t6(-4).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(-3))), t6(-3).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(-2))), t6(-2).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(-1))), t6(-1).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(1))), t6(1).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(2))), t6(2).div_rem(t6(7)));
+        assert_eq!(Some((t6(0), t6(3))), t6(3).div_rem(t6(7)));
+        assert_eq!(Some((t6(1), t6(-3))), t6(4).div_rem(t6(7)));
+        assert_eq!(Some((t6(1), t6(-2))), t6(5).div_rem(t6(7)));
+        assert_eq!(Some((t6(1), t6(-1))), t6(6).div_rem(t6(7)));
+        assert_eq!(Some((t6(1), t6(0))), t6(7).div_rem(t6(7)));
 
-        assert!(t6(0).div_rem_checked(t6(0)).is_none());
+        assert!(t6(0).div_rem(t6(0)).is_none());
     }
 
     fn t6(n: i16) -> T6 {
