@@ -9,9 +9,9 @@ use num_bigint::{BigInt, ToBigInt};
 use num_traits::{CheckedAdd, CheckedMul, Signed};
 
 use crate::{
-    error::{assert_length_le, Error, Result},
+    error::{Error, Result, assert_length_le},
     hyte::Hyte,
-    trit::{self, Trit, _0, _1, _T},
+    trit::{_0, _1, _T, Trit},
     tryte::{self, Tryte},
 };
 
@@ -27,11 +27,7 @@ pub type T24 = TInt<4>;
 pub type T48 = TInt<8>;
 
 const fn const_min_usize(a: usize, b: usize) -> usize {
-    if a < b {
-        a
-    } else {
-        b
-    }
+    if a < b { a } else { b }
 }
 
 impl<const N: usize> TInt<N> {
@@ -294,9 +290,9 @@ impl<const N: usize> TInt<N> {
             let tryte = self.trytes[i];
             n = n
                 .checked_mul(&I::from(T6::RANGE_I64 as i16))
-                .ok_or_else(|| Error::TryIntoInt)?
+                .ok_or(Error::TryIntoInt)?
                 .checked_add(&I::from(tryte.into_i16()))
-                .ok_or_else(|| Error::TryIntoInt)?;
+                .ok_or(Error::TryIntoInt)?;
         }
 
         Ok(n)
@@ -350,12 +346,9 @@ impl<const N: usize> TInt<N> {
         _0
     }
 
+    #[allow(dead_code)]
     fn abs(self) -> Self {
-        if self.sign_trit() == _T {
-            -self
-        } else {
-            self
-        }
+        if self.sign_trit() == _T { -self } else { self }
     }
 
     fn div_rem_pos_slow(self, d: Self) -> (Self, Self) {
@@ -652,8 +645,13 @@ impl<const N: usize> ops::Div for TInt<N> {
     type Output = TInt<N>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let (quotient, _) = self.div_rem(rhs);
-        quotient
+        if let Some((quotient, _)) = self.div_rem(rhs) {
+            quotient
+        } else {
+            #[allow(unconditional_panic)]
+            let _ = 1 / 0;
+            unreachable!()
+        }
     }
 }
 
@@ -661,8 +659,13 @@ impl<const N: usize> ops::Rem for TInt<N> {
     type Output = TInt<N>;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        let (_, rem) = self.div_rem(rhs);
-        rem
+        if let Some((_, rem)) = self.div_rem(rhs) {
+            rem
+        } else {
+            #[allow(unconditional_panic)]
+            let _ = 1 % 0;
+            unreachable!()
+        }
     }
 }
 
@@ -688,9 +691,9 @@ mod tests {
     use std::io::Cursor;
 
     use crate::{
+        Result, T6, T24,
         test_constants::*,
         trit::{_0, _1, _T},
-        Result, T24, T6,
     };
 
     #[test]
@@ -710,10 +713,10 @@ mod tests {
         assert_eq!(T24_1, T24::try_from_int(1).unwrap());
         assert_eq!(T24_MAX, T24::try_from_int(T24::MAX_I64).unwrap());
 
-        assert!(T24::try_from_int(i64::min_value()).is_err());
+        assert!(T24::try_from_int(i64::MIN).is_err());
         assert!(T24::try_from_int(T24::MIN_I64 - 1).is_err());
         assert!(T24::try_from_int(T24::MAX_I64 + 1).is_err());
-        assert!(T24::try_from_int(i64::max_value()).is_err());
+        assert!(T24::try_from_int(i64::MAX).is_err());
     }
 
     #[test]
