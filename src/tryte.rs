@@ -3,10 +3,10 @@ use std::{fmt, io::Cursor, ops};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
-    error::{assert_length_eq, Error, Result},
+    error::{Error, Result, assert_length_eq},
     hyte::Hyte,
     tables::TRYTE_TO_I16,
-    trit::{self, Trit, _0, _1, _T},
+    trit::{self, _0, _1, _T, Trit},
 };
 
 pub const BITMASK: u16 = 0b11_11_11_11_11_11;
@@ -25,15 +25,15 @@ impl Tryte {
     pub const MIN: Tryte = Tryte::from_trits([_T, _T, _T, _T, _T, _T]);
     pub const MAX: Tryte = Tryte::from_trits([_1, _1, _1, _1, _1, _1]);
 
-    pub(crate) const fn from_raw(bits: u16) -> Self {
+    pub const fn from_raw(bits: u16) -> Self {
         Tryte(bits)
     }
 
-    pub(crate) const fn into_raw(self) -> u16 {
+    pub const fn into_raw(self) -> u16 {
         self.0
     }
 
-    pub(crate) const fn try_from_raw(bits: u16) -> Result<Self> {
+    pub const fn try_from_raw(bits: u16) -> Result<Self> {
         if bits >> Self::BIT_SIZE != 0 {
             return Err(Error::InvalidBitPattern(bits as u64));
         }
@@ -103,6 +103,11 @@ impl Tryte {
         }
 
         trits
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    pub const fn low_trit4(self) -> u8 {
+        self.0 as u8
     }
 
     const fn from_hytes(low_hyte: Hyte, high_hyte: Hyte) -> Self {
@@ -311,11 +316,11 @@ impl fmt::Display for Tryte {
 #[cfg(test)]
 mod tests {
     use crate::{
+        Trit, Tryte,
         test_constants::{
             TRYTE_0, TRYTE_1, TRYTE_64, TRYTE_MAX, TRYTE_MIN, TRYTE_NEG1, TRYTE_NEG64,
         },
         trit::{_0, _1, _T},
-        Trit, Tryte,
     };
 
     #[test]

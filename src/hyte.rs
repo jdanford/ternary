@@ -1,7 +1,7 @@
 use crate::{
-    error::{Error, Result},
-    trit::{index3, CHAR_INVALID, _0, _1, _INVALID, _T},
     Trit,
+    error::{Error, Result},
+    trit::{_0, _1, _INVALID, _T, CHAR_INVALID, index3},
 };
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]

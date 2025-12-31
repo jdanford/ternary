@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use crate::{
+    T24, Trit, Tryte,
     trit::{_0, _1, _T},
-    Trit, Tryte, T24,
 };
 
 const fn tryte(t5: Trit, t4: Trit, t3: Trit, t2: Trit, t1: Trit, t0: Trit) -> Tryte {
@@ -10,27 +10,35 @@ const fn tryte(t5: Trit, t4: Trit, t3: Trit, t2: Trit, t1: Trit, t0: Trit) -> Tr
 }
 
 pub const TRYTE_MIN: Tryte = tryte(_T, _T, _T, _T, _T, _T);
+pub const TRYTE_NEG317: Tryte = tryte(_T, _1, _0, _1, _T, _1);
 pub const TRYTE_NEG278: Tryte = tryte(_T, _0, _T, _T, _0, _1);
 pub const TRYTE_NEG256: Tryte = tryte(_T, _0, _0, _T, _T, _T);
 pub const TRYTE_NEG217: Tryte = tryte(_T, _0, _1, _0, _0, _T);
+pub const TRYTE_NEG167: Tryte = tryte(_T, _1, _0, _T, _1, _1);
+pub const TRYTE_NEG89: Tryte = tryte(_0, _T, _0, _T, _0, _1);
 pub const TRYTE_NEG81: Tryte = tryte(_0, _T, _0, _0, _0, _0);
 pub const TRYTE_NEG64: Tryte = tryte(_0, _T, _1, _T, _0, _T);
 pub const TRYTE_NEG16: Tryte = tryte(_0, _0, _T, _1, _1, _T);
 pub const TRYTE_NEG9: Tryte = tryte(_0, _0, _0, _T, _0, _0);
 pub const TRYTE_NEG8: Tryte = tryte(_0, _0, _0, _T, _0, _1);
 pub const TRYTE_NEG6: Tryte = tryte(_0, _0, _0, _T, _1, _0);
+pub const TRYTE_NEG3: Tryte = tryte(_0, _0, _0, _0, _T, _0);
 pub const TRYTE_NEG1: Tryte = tryte(_0, _0, _0, _0, _0, _T);
 pub const TRYTE_0: Tryte = tryte(_0, _0, _0, _0, _0, _0);
 pub const TRYTE_1: Tryte = tryte(_0, _0, _0, _0, _0, _1);
+pub const TRYTE_3: Tryte = tryte(_0, _0, _0, _0, _1, _0);
 pub const TRYTE_6: Tryte = tryte(_0, _0, _0, _1, _T, _0);
 pub const TRYTE_8: Tryte = tryte(_0, _0, _0, _1, _0, _T);
 pub const TRYTE_9: Tryte = tryte(_0, _0, _0, _1, _0, _0);
 pub const TRYTE_16: Tryte = tryte(_0, _0, _1, _T, _T, _1);
 pub const TRYTE_64: Tryte = tryte(_0, _1, _T, _1, _0, _1);
 pub const TRYTE_81: Tryte = tryte(_0, _1, _0, _0, _0, _0);
+pub const TRYTE_89: Tryte = tryte(_0, _1, _0, _1, _0, _T);
+pub const TRYTE_167: Tryte = tryte(_1, _T, _0, _1, _T, _T);
 pub const TRYTE_217: Tryte = tryte(_1, _0, _T, _0, _0, _1);
 pub const TRYTE_256: Tryte = tryte(_1, _0, _0, _1, _1, _1);
 pub const TRYTE_278: Tryte = tryte(_1, _0, _1, _1, _0, _T);
+pub const TRYTE_317: Tryte = tryte(_1, _1, _0, _T, _1, _T);
 pub const TRYTE_MAX: Tryte = tryte(_1, _1, _1, _1, _1, _1);
 
 const fn t24(trytes: [Tryte; T24::SIZE]) -> T24 {
@@ -38,6 +46,7 @@ const fn t24(trytes: [Tryte; T24::SIZE]) -> T24 {
 }
 
 pub const T24_MIN: T24 = t24([TRYTE_MIN; 4]);
+pub const T24_NEG1073741824: T24 = t24([TRYTE_89, TRYTE_NEG317, TRYTE_167, TRYTE_NEG3]);
 pub const T24_NEG4096: T24 = t24([TRYTE_278, TRYTE_NEG6, TRYTE_0, TRYTE_0]);
 pub const T24_NEG512: T24 = t24([TRYTE_217, TRYTE_NEG1, TRYTE_0, TRYTE_0]);
 pub const T24_NEG256: T24 = t24([TRYTE_NEG256, TRYTE_0, TRYTE_0, TRYTE_0]);
@@ -57,6 +66,7 @@ pub const T24_81: T24 = t24([TRYTE_81, TRYTE_0, TRYTE_0, TRYTE_0]);
 pub const T24_256: T24 = t24([TRYTE_256, TRYTE_0, TRYTE_0, TRYTE_0]);
 pub const T24_512: T24 = t24([TRYTE_NEG217, TRYTE_1, TRYTE_0, TRYTE_0]);
 pub const T24_4096: T24 = t24([TRYTE_NEG278, TRYTE_6, TRYTE_0, TRYTE_0]);
+pub const T24_1073741824: T24 = t24([TRYTE_NEG89, TRYTE_317, TRYTE_NEG167, TRYTE_3]);
 pub const T24_MAX: T24 = t24([TRYTE_MAX; 4]);
 
 pub const BYTES_MIN: [u8; 8] = [

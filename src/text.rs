@@ -1,10 +1,10 @@
 use std::char;
 
 use crate::{
+    TInt, Trit,
     error::{Error, Result},
     trit::{self, _T},
     tryte::{self, Tryte},
-    TInt, Trit,
 };
 
 const SINGLE_RANGE: usize = 3usize.pow(5);

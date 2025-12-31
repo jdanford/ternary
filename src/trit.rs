@@ -1,9 +1,9 @@
 use std::{cmp::Ordering, convert::TryFrom, fmt, ops};
 
 use crate::{
+    Tryte,
     error::{Error, Result},
     tables::{TRIT2_TO_AND, TRIT2_TO_CMP, TRIT2_TO_OR, TRIT2_TO_PRODUCT, TRIT3_TO_SUM_AND_CARRY},
-    Tryte,
 };
 
 pub const BITMASK: u8 = 0b11;
@@ -261,7 +261,7 @@ impl ops::Mul for Trit {
 
 #[cfg(test)]
 mod tests {
-    use crate::trit::{Trit, _0, _1, _T};
+    use crate::trit::{_0, _1, _T, Trit};
 
     #[test]
     fn into_i8() {

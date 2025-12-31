@@ -9,15 +9,15 @@
 pub mod error;
 mod hyte;
 mod int;
-mod tables;
-mod test_constants;
+pub mod tables;
+pub mod test_constants;
 pub mod text;
 pub mod trit;
 pub mod tryte;
 
 pub use crate::{
     error::{Error, Result},
-    int::{TInt, T12, T24, T48, T6},
+    int::{T6, T12, T24, T48, TInt},
     trit::Trit,
     tryte::Tryte,
 };
