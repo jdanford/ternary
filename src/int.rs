@@ -66,6 +66,16 @@ impl<const N: usize> TInt<N> {
         Self::from_trytes(trytes)
     }
 
+    pub fn try_from_slice(trytes: &[Tryte]) -> Result<Self> {
+        trytes
+            .try_into()
+            .map(Self::from_trytes)
+            .map_err(|_| Error::InvalidLength {
+                actual: trytes.len(),
+                expected: N,
+            })
+    }
+
     pub const fn shl_trytes(self, offset: usize) -> Self {
         let mut int = Self::ZERO;
         let mut i = 0;
