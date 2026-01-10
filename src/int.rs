@@ -66,16 +66,6 @@ impl<const N: usize> TInt<N> {
         Self::from_trytes(trytes)
     }
 
-    pub fn try_from_slice(trytes: &[Tryte]) -> Result<Self> {
-        trytes
-            .try_into()
-            .map(Self::from_trytes)
-            .map_err(|_| Error::InvalidLength {
-                actual: trytes.len(),
-                expected: N,
-            })
-    }
-
     pub const fn shl_trytes(self, offset: usize) -> Self {
         let mut int = Self::ZERO;
         let mut i = 0;
@@ -361,13 +351,11 @@ impl<const N: usize> TInt<N> {
         if self.sign_trit() == _T { -self } else { self }
     }
 
-    fn div_rem(self, d: Self) -> Option<(Self, Self)> {
-        if d == Self::ZERO {
-            return None;
-        }
-
-        if self == Self::ZERO {
-            return Some((Self::ZERO, Self::ZERO));
+    // adapted from code by Douglas W. Jones
+    // https://homepage.cs.uiowa.edu/~jones/ternary/multiply.shtml
+    pub fn div_rem(self, d: Self) -> (Self, Self) {
+        if self == Self::ZERO || d == Self::ZERO {
+            return (Self::ZERO, Self::ZERO);
         }
 
         let (d, one) = if d < Self::ZERO {
@@ -401,7 +389,7 @@ impl<const N: usize> TInt<N> {
             }
         }
 
-        Some((q, r))
+        (q, r)
     }
 
     fn map_trytes<F>(self, f: F) -> Self
@@ -505,13 +493,25 @@ impl<const N: usize> TInt<N> {
     }
 }
 
-impl T6 {
-    pub fn into_tryte(self) -> Tryte {
-        self.trytes[0]
+impl<const N: usize> TryFrom<&[Tryte]> for TInt<N> {
+    type Error = Error;
+
+    fn try_from(slice: &[Tryte]) -> std::result::Result<Self, Self::Error> {
+        slice
+            .try_into()
+            .map(Self::from_trytes)
+            .map_err(|_| Error::InvalidLength {
+                actual: slice.len(),
+                expected: N,
+            })
     }
 }
 
 impl T6 {
+    pub fn into_tryte(self) -> Tryte {
+        self.trytes[0]
+    }
+
     pub fn into_i16(self) -> i16 {
         self.trytes[0].into_i16()
     }
@@ -519,19 +519,24 @@ impl T6 {
 
 impl T12 {
     #[allow(clippy::cast_possible_truncation)]
-    pub fn into_t4_t4_t4(self) -> (T6, T6, T6) {
-        let [tryte_a, tryte_b] = self.into_trytes();
-        let (a0123, a45) = tryte_a.split_trits_raw(4);
-        let (b01, b2345) = tryte_b.split_trits_raw(2);
+    pub fn trit4_triple(self) -> (u8, u8, u8) {
+        let trytes = self.into_trytes();
+        let trit6_a = trytes[0].into_raw();
+        let trit6_b = trytes[1].into_raw();
 
-        let trit4_a = a0123;
-        let trit4_b = b01 << (2 * Trit::BIT_SIZE) | a45;
-        let trit4_c = b2345;
+        let trit4_a = trit6_a as u8;
+        let trit4_b = ((trit6_a >> 8) | (trit6_b << 4)) as u8;
+        let trit4_c = (trit6_b >> 4) as u8;
+        (trit4_a, trit4_b, trit4_c)
+    }
+}
 
-        let t6_a = T6::from_tryte(Tryte::from_raw(trit4_a));
-        let t6_b = T6::from_tryte(Tryte::from_raw(trit4_b));
-        let t6_c = T6::from_tryte(Tryte::from_raw(trit4_c));
-        (t6_a, t6_b, t6_c)
+impl T24 {
+    pub fn t12_pair(self) -> (T12, T12) {
+        let [t0, t1, t2, t3] = self.into_trytes();
+        let lo = T12::from_trytes([t0, t1]);
+        let hi = T12::from_trytes([t2, t3]);
+        (lo, hi)
     }
 }
 
@@ -644,13 +649,8 @@ impl<const N: usize> ops::Div for TInt<N> {
     type Output = TInt<N>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        if let Some((quotient, _)) = self.div_rem(rhs) {
-            quotient
-        } else {
-            #[allow(unconditional_panic)]
-            let _ = 1 / 0;
-            unreachable!()
-        }
+        let (quotient, _) = self.div_rem(rhs);
+        quotient
     }
 }
 
@@ -658,13 +658,8 @@ impl<const N: usize> ops::Rem for TInt<N> {
     type Output = TInt<N>;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        if let Some((_, rem)) = self.div_rem(rhs) {
-            rem
-        } else {
-            #[allow(unconditional_panic)]
-            let _ = 1 % 0;
-            unreachable!()
-        }
+        let (_, rem) = self.div_rem(rhs);
+        rem
     }
 }
 
@@ -1020,28 +1015,43 @@ mod tests {
 
     #[test]
     fn div_rem() {
-        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(-364)));
-        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(-1)));
-        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(1)));
-        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(364)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(-364)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(-1)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(0)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(1)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(364)));
 
-        assert_eq!(Some((t6(-1), t6(0))), t6(-7).div_rem(t6(7)));
-        assert_eq!(Some((t6(-1), t6(1))), t6(-6).div_rem(t6(7)));
-        assert_eq!(Some((t6(-1), t6(2))), t6(-5).div_rem(t6(7)));
-        assert_eq!(Some((t6(-1), t6(3))), t6(-4).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(-3))), t6(-3).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(-2))), t6(-2).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(-1))), t6(-1).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(0))), t6(0).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(1))), t6(1).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(2))), t6(2).div_rem(t6(7)));
-        assert_eq!(Some((t6(0), t6(3))), t6(3).div_rem(t6(7)));
-        assert_eq!(Some((t6(1), t6(-3))), t6(4).div_rem(t6(7)));
-        assert_eq!(Some((t6(1), t6(-2))), t6(5).div_rem(t6(7)));
-        assert_eq!(Some((t6(1), t6(-1))), t6(6).div_rem(t6(7)));
-        assert_eq!(Some((t6(1), t6(0))), t6(7).div_rem(t6(7)));
+        assert_eq!((t6(-4), t6(1)), t6(-7).div_rem(t6(2)));
+        assert_eq!((t6(-3), t6(0)), t6(-6).div_rem(t6(2)));
+        assert_eq!((t6(-3), t6(1)), t6(-5).div_rem(t6(2)));
+        assert_eq!((t6(-2), t6(0)), t6(-4).div_rem(t6(2)));
+        assert_eq!((t6(-1), t6(-1)), t6(-3).div_rem(t6(2)));
+        assert_eq!((t6(-1), t6(0)), t6(-2).div_rem(t6(2)));
+        assert_eq!((t6(0), t6(-1)), t6(-1).div_rem(t6(2)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(2)));
+        assert_eq!((t6(0), t6(1)), t6(1).div_rem(t6(2)));
+        assert_eq!((t6(1), t6(0)), t6(2).div_rem(t6(2)));
+        assert_eq!((t6(1), t6(1)), t6(3).div_rem(t6(2)));
+        assert_eq!((t6(2), t6(0)), t6(4).div_rem(t6(2)));
+        assert_eq!((t6(3), t6(-1)), t6(5).div_rem(t6(2)));
+        assert_eq!((t6(3), t6(0)), t6(6).div_rem(t6(2)));
+        assert_eq!((t6(4), t6(-1)), t6(7).div_rem(t6(2)));
 
-        assert!(t6(0).div_rem(t6(0)).is_none());
+        assert_eq!((t6(-1), t6(0)), t6(-7).div_rem(t6(7)));
+        assert_eq!((t6(-1), t6(1)), t6(-6).div_rem(t6(7)));
+        assert_eq!((t6(-1), t6(2)), t6(-5).div_rem(t6(7)));
+        assert_eq!((t6(-1), t6(3)), t6(-4).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(-3)), t6(-3).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(-2)), t6(-2).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(-1)), t6(-1).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(0)), t6(0).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(1)), t6(1).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(2)), t6(2).div_rem(t6(7)));
+        assert_eq!((t6(0), t6(3)), t6(3).div_rem(t6(7)));
+        assert_eq!((t6(1), t6(-3)), t6(4).div_rem(t6(7)));
+        assert_eq!((t6(1), t6(-2)), t6(5).div_rem(t6(7)));
+        assert_eq!((t6(1), t6(-1)), t6(6).div_rem(t6(7)));
+        assert_eq!((t6(1), t6(0)), t6(7).div_rem(t6(7)));
     }
 
     fn t6(n: i16) -> T6 {

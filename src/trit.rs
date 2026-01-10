@@ -97,7 +97,7 @@ impl Trit {
         }
     }
 
-    pub const fn from_trit4(trit4: u8) -> Result<Self> {
+    pub const fn try_from_trit4(trit4: u8) -> Result<Self> {
         let bits = trit4 & BITMASK;
         Trit::try_from_raw(bits)
     }
